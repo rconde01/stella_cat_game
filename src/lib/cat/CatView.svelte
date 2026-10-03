@@ -1,14 +1,26 @@
 <!--
-	Draws a cat as SVG from its data. Pass a changing `t` (seconds) to animate it.
+	Draws a cat (and its background) as SVG from its data. Pass a changing `t` (seconds) to animate it.
 -->
 <script lang="ts">
+	import CostumeBody from './accessories/CostumeBody.svelte';
+	import Smores, { type SmorePiece } from './accessories/Smores.svelte';
 	import { animate } from './animation';
 	import { RAINBOW_STOPS, shade } from './color';
-	import { blobTransform, layoutCat, limbPath, tailPath, UNIT_PATHS } from './geometry';
+	import { costumeLimbLayers, costumeOf } from './costume';
+	import {
+		blobPoint,
+		blobTransform,
+		layoutCat,
+		limbPath,
+		tailPath,
+		UNIT_PATHS,
+		type Blob
+	} from './geometry';
 	import Head from './parts/Head.svelte';
-	import Limb from './parts/Limb.svelte';
+	import Limb, { type LimbLayer } from './parts/Limb.svelte';
 	import Part from './parts/Part.svelte';
 	import { limbDash, patternPath } from './patterns';
+	import Scenery from './Scenery.svelte';
 	import { RAINBOW, type Cat } from './types';
 
 	interface Props {
@@ -17,20 +29,24 @@
 		t?: number;
 		/** 'cat' crops to the cat (option buttons); 'face' zooms in on the head (mood buttons). */
 		focus?: 'full' | 'cat' | 'face';
+		/** Draw the cat's background. */
+		scenery?: boolean;
 	}
 
-	let { cat, t = 0, focus = 'full' }: Props = $props();
+	let { cat, t = 0, focus = 'full', scenery = true }: Props = $props();
 
 	const uid = $props.id();
 
 	const layout = $derived(layoutCat(cat));
 	const anim = $derived(animate(cat.disposition, t));
+	const costume = $derived(costumeOf(cat.accessories));
+	const showScenery = $derived(scenery && cat.background !== 'none');
 
 	const rainbow = $derived(cat.highlight === RAINBOW);
 	const markingFill = $derived(rainbow ? `url(#${uid}-rainbow)` : cat.highlight);
 	const limbMarkingFill = $derived(rainbow ? `url(#${uid}-rainbow-world)` : cat.highlight);
-	const irisFill = $derived(`url(#${uid}-iris)`);
-	const filter = $derived(cat.shape === 'fluffy' ? `url(#${uid}-fluff)` : undefined);
+	const irisColor = $derived(cat.accessories.includes('laser-eyes') ? '#ff2d55' : cat.eyeColor);
+	const fluffy = $derived(cat.shape === 'fluffy' ? `url(#${uid}-fluff)` : undefined);
 
 	const viewBox = $derived.by(() => {
 		if (focus === 'full') return '0 0 400 400';
@@ -39,14 +55,42 @@
 		return `${x - 1.5 * s} ${y - 1.6 * s} ${3 * s} ${3 * s}`;
 	});
 
-	const legDash = $derived(limbDash(cat.pattern, 'leg'));
-	const tailDash = $derived(limbDash(cat.pattern, 'tail'));
+	function limbLayers(area: 'leg' | 'tail'): LimbLayer[] {
+		const dash = limbDash(cat.pattern, area);
+		const pattern: LimbLayer[] = dash ? [{ ...dash, stroke: limbMarkingFill }] : [];
+		return [...pattern, ...costumeLimbLayers(costume, area)];
+	}
+	const legLayers = $derived(limbLayers('leg'));
+	const tailLayers = $derived(limbLayers('tail'));
+
+	type SmoreSpot = Omit<SmorePiece, 'x' | 'y'> & { ux: number; uy: number };
+	const SMORE_SPOTS: Record<Blob['path'], SmoreSpot[]> = {
+		pear: [
+			{ ux: -0.5, uy: -0.45, rot: -15, kind: 'graham' },
+			{ ux: 0.55, uy: -0.2, rot: 20, kind: 'marshmallow' },
+			{ ux: 0.62, uy: 0.5, rot: 30, kind: 'chocolate' }
+		],
+		loaf: [
+			{ ux: -0.45, uy: -0.6, rot: -10, kind: 'marshmallow' },
+			{ ux: 0.05, uy: -0.75, rot: 15, kind: 'graham' },
+			{ ux: 0.45, uy: -0.35, rot: -20, kind: 'chocolate' },
+			{ ux: 0.2, uy: 0.2, rot: 25, kind: 'marshmallow' }
+		],
+		ellipse: []
+	};
+	const bodySmores = $derived(
+		SMORE_SPOTS[layout.body.path].map(({ ux, uy, rot, kind }) => ({
+			...blobPoint(layout.body, ux, uy),
+			rot,
+			kind
+		}))
+	);
 	const ground = $derived(layout.ground);
 </script>
 
 <svg
 	{viewBox}
-	class:clip={focus !== 'full'}
+	class:clip={focus !== 'full' || showScenery || cat.accessories.includes('laser-eyes')}
 	xmlns="http://www.w3.org/2000/svg"
 	role="img"
 	aria-label="{cat.name}, a {cat.disposition} cat"
@@ -70,9 +114,18 @@
 			{/each}
 		</linearGradient>
 		<linearGradient id="{uid}-iris" x1="0" y1="0" x2="0" y2="1">
-			<stop offset="0" stop-color={shade(cat.eyeColor, -0.55)} />
-			<stop offset="0.55" stop-color={cat.eyeColor} />
-			<stop offset="1" stop-color={shade(cat.eyeColor, 0.5)} />
+			<stop offset="0" stop-color={shade(irisColor, -0.55)} />
+			<stop offset="0.55" stop-color={irisColor} />
+			<stop offset="1" stop-color={shade(irisColor, 0.5)} />
+		</linearGradient>
+		<linearGradient id="{uid}-steel" x1="0" y1="0" x2="1" y2="1">
+			<stop offset="0" stop-color="#f4f7fb" />
+			<stop offset="0.5" stop-color="#c3ccd8" />
+			<stop offset="1" stop-color="#8d98a8" />
+		</linearGradient>
+		<linearGradient id="{uid}-metal" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#dbe6f0" />
+			<stop offset="1" stop-color="#9fb2c6" />
 		</linearGradient>
 		<filter id="{uid}-fluff" x="-15%" y="-15%" width="130%" height="130%">
 			<feTurbulence
@@ -92,6 +145,10 @@
 		</filter>
 	</defs>
 
+	{#if showScenery}
+		<Scenery {uid} background={cat.background} {t} />
+	{/if}
+
 	<ellipse
 		cx={layout.shadow.cx}
 		cy={ground}
@@ -102,51 +159,44 @@
 	/>
 
 	<g transform="translate(0 {ground}) scale(1 {anim.breath}) translate(0 {-ground})">
-		<g {filter}>
+		<!-- Costumes are smooth metal, so they skip the fluffy filter. -->
+		<g filter={costume ? undefined : fluffy}>
 			<Limb
 				d={tailPath(layout.tail, anim.tailSwing)}
 				width={layout.tail.width}
 				fill={cat.color}
-				dash={tailDash}
-				markingFill={limbMarkingFill}
+				layers={tailLayers}
 			/>
 			{#each layout.backLegs as leg, i (i)}
 				<Limb
 					d={limbPath(leg)}
 					width={leg.width}
 					fill={shade(cat.color, -0.08)}
-					dash={legDash}
-					markingFill={limbMarkingFill}
+					layers={legLayers}
 				/>
 			{/each}
-			<Part
-				id="{uid}-body"
-				d={UNIT_PATHS[layout.body.path]}
-				transform={blobTransform(layout.body)}
-				fill={cat.color}
-				markings={patternPath(cat.pattern, layout.body.path)}
-				{markingFill}
-			/>
-			{#each layout.haunches as haunch, i (i)}
+			{#each [layout.body, ...layout.haunches] as blob, i (i)}
 				<Part
-					id="{uid}-haunch-{i}"
-					d={UNIT_PATHS[haunch.path]}
-					transform={blobTransform(haunch)}
+					id="{uid}-blob-{i}"
+					d={UNIT_PATHS[blob.path]}
+					transform={blobTransform(blob)}
 					fill={cat.color}
-					markings={patternPath(cat.pattern, haunch.path)}
+					markings={patternPath(cat.pattern, blob.path)}
 					{markingFill}
-				/>
+				>
+					{#if costume}
+						<CostumeBody {uid} {costume} {blob} t={anim.t} />
+					{/if}
+				</Part>
 			{/each}
 			{#each layout.frontLegs as leg, i (i)}
-				<Limb
-					d={limbPath(leg)}
-					width={leg.width}
-					fill={cat.color}
-					dash={legDash}
-					markingFill={limbMarkingFill}
-				/>
+				<Limb d={limbPath(leg)} width={leg.width} fill={cat.color} layers={legLayers} />
 			{/each}
 		</g>
+
+		{#if cat.accessories.includes('smores')}
+			<Smores pieces={bodySmores} size={22} />
+		{/if}
 
 		<Head
 			{uid}
@@ -156,8 +206,10 @@
 			{markingFill}
 			pattern={cat.pattern}
 			disposition={cat.disposition}
-			{irisFill}
-			{filter}
+			irisFill="url(#{uid}-iris)"
+			accessories={cat.accessories}
+			{costume}
+			filter={fluffy}
 		/>
 	</g>
 </svg>

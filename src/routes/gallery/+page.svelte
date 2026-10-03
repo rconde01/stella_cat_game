@@ -4,9 +4,21 @@
 <script lang="ts">
 	import CatView from '#lib/cat/CatView.svelte';
 	import { DEFAULT_CAT } from '#lib/cat/options.ts';
-	import { DISPOSITIONS, PATTERNS, POSES, SHAPES, type Cat } from '#lib/cat/types.ts';
+	import {
+		ACCESSORIES,
+		BACKGROUNDS,
+		DISPOSITIONS,
+		PATTERNS,
+		POSES,
+		SHAPES,
+		type Cat
+	} from '#lib/cat/types.ts';
 
-	const cat = (overrides: Partial<Cat>): Cat => ({ ...DEFAULT_CAT, ...overrides });
+	const cat = (overrides: Partial<Cat>): Cat => ({
+		...DEFAULT_CAT,
+		background: 'none',
+		...overrides
+	});
 </script>
 
 <svelte:head>
@@ -15,6 +27,26 @@
 
 <main>
 	<h1>Cat gallery</h1>
+	<h2>Accessories</h2>
+	<div class="grid">
+		{#each ACCESSORIES as accessory (accessory)}
+			{#each ['sitting', 'stretching'] as const as pose (pose)}
+				<figure>
+					<CatView cat={cat({ accessories: [accessory], pose })} t={0.5} />
+					<figcaption>{accessory} / {pose}</figcaption>
+				</figure>
+			{/each}
+		{/each}
+	</div>
+	<h2>Backgrounds</h2>
+	<div class="grid">
+		{#each BACKGROUNDS as background, i (background)}
+			<figure>
+				<CatView cat={cat({ background, pose: POSES[i % POSES.length] })} t={0.5} />
+				<figcaption>{background}</figcaption>
+			</figure>
+		{/each}
+	</div>
 	<h2>Shapes &times; poses</h2>
 	<div class="grid">
 		{#each SHAPES as shape (shape)}

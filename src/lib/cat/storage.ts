@@ -1,5 +1,21 @@
-import { COAT_COLORS, DEFAULT_CAT, EYE_COLORS, HIGHLIGHT_COLORS, type Option } from './options';
-import { DISPOSITIONS, PATTERNS, POSES, SHAPES, type Cat } from './types';
+import {
+	COAT_COLORS,
+	DEFAULT_CAT,
+	EYE_COLORS,
+	HIGHLIGHT_COLORS,
+	toggleAccessory,
+	type Option
+} from './options';
+import {
+	ACCESSORIES,
+	BACKGROUNDS,
+	DISPOSITIONS,
+	PATTERNS,
+	POSES,
+	SHAPES,
+	type Accessory,
+	type Cat
+} from './types';
 
 /** Where cats are saved. Swap the implementation for a server-backed one later; the UI won't change. */
 export interface CatStore {
@@ -33,7 +49,12 @@ export function sanitizeCat(raw: unknown): Cat {
 		color: colorOf(r.color, COAT_COLORS, d.color),
 		highlight: colorOf(r.highlight, HIGHLIGHT_COLORS, d.highlight),
 		eyeColor: colorOf(r.eyeColor, EYE_COLORS, d.eyeColor),
-		disposition: oneOf(r.disposition, DISPOSITIONS, d.disposition)
+		disposition: oneOf(r.disposition, DISPOSITIONS, d.disposition),
+		// Re-adding one at a time keeps the one-per-slot rule even for bad data.
+		accessories: (Array.isArray(r.accessories) ? r.accessories : [])
+			.filter((a): a is Accessory => ACCESSORIES.includes(a))
+			.reduce<Accessory[]>((worn, a) => (worn.includes(a) ? worn : toggleAccessory(worn, a)), []),
+		background: oneOf(r.background, BACKGROUNDS, d.background)
 	};
 }
 

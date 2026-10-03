@@ -1,9 +1,12 @@
 import {
+	BACKGROUNDS,
 	DISPOSITIONS,
 	PATTERNS,
 	POSES,
 	RAINBOW,
 	SHAPES,
+	type Accessory,
+	type Background,
 	type Cat,
 	type Disposition,
 	type Pattern,
@@ -44,6 +47,45 @@ export const DISPOSITION_OPTIONS: Option<Disposition>[] = [
 	{ id: 'sleepy', label: 'Sleepy' },
 	{ id: 'silly', label: 'Silly' },
 	{ id: 'shy', label: 'Shy' }
+];
+
+/** Where an accessory goes. A cat can wear one accessory per slot. */
+export type AccessorySlot = 'head' | 'eyes' | 'body' | 'fur';
+
+export const ACCESSORY_OPTIONS: (Option<Accessory> & { slot: AccessorySlot })[] = [
+	{ id: 'party-hat', label: 'Party hat', slot: 'head' },
+	{ id: 'top-hat', label: 'Top hat', slot: 'head' },
+	{ id: 'crown', label: 'Crown', slot: 'head' },
+	{ id: 'bow', label: 'Bow', slot: 'head' },
+	{ id: 'unicorn-horn', label: 'Unicorn horn', slot: 'head' },
+	{ id: 'glasses', label: 'Glasses', slot: 'eyes' },
+	{ id: 'heart-sunglasses', label: 'Heart shades', slot: 'eyes' },
+	{ id: 'laser-eyes', label: 'Laser eyes', slot: 'eyes' },
+	{ id: 'armour', label: 'Armour', slot: 'body' },
+	{ id: 'robot', label: 'Robot', slot: 'body' },
+	{ id: 'smores', label: "S'mores fur", slot: 'fur' }
+];
+
+export function accessorySlot(id: Accessory): AccessorySlot {
+	return ACCESSORY_OPTIONS.find((o) => o.id === id)!.slot;
+}
+
+/** Take an accessory off if worn; otherwise put it on, replacing anything in the same slot. */
+export function toggleAccessory(worn: Accessory[], id: Accessory): Accessory[] {
+	if (worn.includes(id)) return worn.filter((a) => a !== id);
+	const slot = accessorySlot(id);
+	return [...worn.filter((a) => accessorySlot(a) !== slot), id];
+}
+
+export const BACKGROUND_OPTIONS: Option<Background>[] = [
+	{ id: 'none', label: 'Plain' },
+	{ id: 'lawn', label: 'Lawn' },
+	{ id: 'woods', label: 'Woods' },
+	{ id: 'bedroom', label: 'Bedroom' },
+	{ id: 'rainbow', label: 'Rainbow' },
+	{ id: 'starry-night', label: 'Starry night' },
+	{ id: 'paw-prints', label: 'Pink paws' },
+	{ id: 'hearts', label: 'Hearts' }
 ];
 
 export const COAT_COLORS: Option<string>[] = [
@@ -117,7 +159,9 @@ export const DEFAULT_CAT: Cat = {
 	color: '#f4a259',
 	highlight: '#e8893a',
 	eyeColor: '#5fcf80',
-	disposition: 'happy'
+	disposition: 'happy',
+	accessories: [],
+	background: 'lawn'
 };
 
 function pick<T>(items: readonly T[]): T {
@@ -133,7 +177,14 @@ export function randomName(current?: string): string {
 export function randomCat(name: string): Cat {
 	const color = pick(COAT_COLORS).id;
 	const highlights = HIGHLIGHT_COLORS.filter((h) => h.id !== color);
+	// Each slot has a 40% chance of something in it.
+	const slots: AccessorySlot[] = ['head', 'eyes', 'body', 'fur'];
+	const accessories = slots
+		.filter(() => Math.random() < 0.4)
+		.map((slot) => pick(ACCESSORY_OPTIONS.filter((o) => o.slot === slot)).id);
 	return {
+		accessories,
+		background: pick(BACKGROUNDS),
 		name,
 		shape: pick(SHAPES),
 		pose: pick(POSES),

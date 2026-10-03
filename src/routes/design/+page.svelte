@@ -3,7 +3,11 @@
 	import CatView from '#lib/cat/CatView.svelte';
 	import { useClock } from '#lib/cat/clock.svelte.ts';
 	import {
+		ACCESSORY_OPTIONS,
+		BACKGROUND_OPTIONS,
 		COAT_COLORS,
+		toggleAccessory,
+		type AccessorySlot,
 		DEFAULT_CAT,
 		DISPOSITION_OPTIONS,
 		EYE_COLORS,
@@ -25,8 +29,17 @@
 		{ id: 'pattern', label: 'Pattern', icon: '🐾' },
 		{ id: 'colors', label: 'Colors', icon: '🌈' },
 		{ id: 'eyes', label: 'Eyes', icon: '👀' },
-		{ id: 'mood', label: 'Mood', icon: '😊' }
+		{ id: 'mood', label: 'Mood', icon: '😊' },
+		{ id: 'dress-up', label: 'Dress up', icon: '🎩' },
+		{ id: 'place', label: 'Place', icon: '🏡' }
 	] as const;
+
+	const ACCESSORY_SLOTS: { id: AccessorySlot; label: string }[] = [
+		{ id: 'head', label: 'On the head' },
+		{ id: 'eyes', label: 'Eyes' },
+		{ id: 'body', label: 'Costume' },
+		{ id: 'fur', label: 'In the fur' }
+	];
 
 	type TabId = (typeof TABS)[number]['id'];
 
@@ -62,20 +75,22 @@
 
 {#snippet catChoices<T extends string>(
 	options: Option<T>[],
-	selected: T,
+	isSelected: (id: T) => boolean,
 	choose: (id: T) => void,
 	preview: (id: T) => Cat,
-	focus: 'cat' | 'face' = 'cat'
+	focus: 'full' | 'cat' | 'face' = 'cat'
 )}
 	<div class="choices">
 		{#each options as option (option.id)}
 			<button
 				class="choice"
-				class:selected={option.id === selected}
-				aria-pressed={option.id === selected}
+				class:selected={isSelected(option.id)}
+				aria-pressed={isSelected(option.id)}
 				onclick={() => choose(option.id)}
 			>
-				<span class="thumb"><CatView cat={preview(option.id)} t={0.5} {focus} /></span>
+				<span class="thumb">
+					<CatView cat={preview(option.id)} t={0.5} {focus} scenery={focus === 'full'} />
+				</span>
 				<span class="label">{option.label}</span>
 			</button>
 		{/each}
@@ -146,7 +161,7 @@
 					<h2>Pick a shape</h2>
 					{@render catChoices(
 						SHAPE_OPTIONS,
-						cat.shape,
+						(id) => id === cat.shape,
 						(id) => (cat.shape = id),
 						(id) => ({ ...cat, shape: id })
 					)}
@@ -154,7 +169,7 @@
 					<h2>Pick a pose</h2>
 					{@render catChoices(
 						POSE_OPTIONS,
-						cat.pose,
+						(id) => id === cat.pose,
 						(id) => (cat.pose = id),
 						(id) => ({ ...cat, pose: id })
 					)}
@@ -162,9 +177,35 @@
 					<h2>Pick a pattern</h2>
 					{@render catChoices(
 						PATTERN_OPTIONS,
-						cat.pattern,
+						(id) => id === cat.pattern,
 						(id) => (cat.pattern = id),
 						(id) => ({ ...cat, pattern: id })
+					)}
+				{:else if tab === 'dress-up'}
+					{#each ACCESSORY_SLOTS as slot (slot.id)}
+						<h2>{slot.label}</h2>
+						{@render catChoices(
+							ACCESSORY_OPTIONS.filter((o) => o.slot === slot.id),
+							(id) => cat.accessories.includes(id),
+							(id) => (cat.accessories = toggleAccessory(cat.accessories, id)),
+							(id) => ({
+								...cat,
+								accessories: cat.accessories.includes(id)
+									? cat.accessories
+									: toggleAccessory(cat.accessories, id)
+							}),
+							slot.id === 'body' ? 'cat' : 'face'
+						)}
+					{/each}
+					<p class="hint">Tap again to take it off.</p>
+				{:else if tab === 'place'}
+					<h2>Where does your cat live?</h2>
+					{@render catChoices(
+						BACKGROUND_OPTIONS,
+						(id) => id === cat.background,
+						(id) => (cat.background = id),
+						(id) => ({ ...cat, background: id }),
+						'full'
 					)}
 				{:else if tab === 'colors'}
 					<h2>Fur color</h2>
@@ -181,7 +222,7 @@
 					<h2>How is your cat feeling?</h2>
 					{@render catChoices(
 						DISPOSITION_OPTIONS,
-						cat.disposition,
+						(id) => id === cat.disposition,
 						(id) => (cat.disposition = id),
 						(id) => ({ ...cat, disposition: id }),
 						'face'
@@ -255,6 +296,8 @@
 		width: 100%;
 		max-width: 480px;
 		aspect-ratio: 1;
+		border-radius: 24px;
+		overflow: hidden;
 	}
 	.surprise,
 	.dice {
@@ -275,16 +318,16 @@
 	}
 	.tabs {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
-		gap: 8px;
+		grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+		gap: 6px;
 	}
 	.tab {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		gap: 2px;
-		padding: 8px 4px;
-		font-size: 1rem;
+		padding: 8px 2px;
+		font-size: 0.9rem;
 		font-weight: 600;
 		border: 3px solid transparent;
 		border-radius: 18px;

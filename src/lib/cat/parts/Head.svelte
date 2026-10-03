@@ -2,11 +2,15 @@
 	Ears, head shape (with markings) and face. Head shape is drawn in head units (about -1..1).
 -->
 <script lang="ts">
+	import Eyewear from '../accessories/Eyewear.svelte';
+	import HeadGear from '../accessories/HeadGear.svelte';
+	import Smores, { type SmorePiece } from '../accessories/Smores.svelte';
 	import type { AnimState } from '../animation';
+	import type { Costume } from '../costume';
 	import type { Head } from '../geometry';
 	import { patternPath } from '../patterns';
 	import { INNER_EAR, OUTLINE } from '../style';
-	import type { Disposition, Pattern } from '../types';
+	import type { Accessory, Disposition, Pattern } from '../types';
 	import Face from './Face.svelte';
 	import Part from './Part.svelte';
 
@@ -19,11 +23,30 @@
 		pattern: Pattern;
 		disposition: Disposition;
 		irisFill: string;
+		accessories: Accessory[];
+		costume: Costume | null;
 		filter?: string;
 	}
 
-	let { uid, head, anim, coatFill, markingFill, pattern, disposition, irisFill, filter }: Props =
-		$props();
+	let {
+		uid,
+		head,
+		anim,
+		coatFill,
+		markingFill,
+		pattern,
+		disposition,
+		irisFill,
+		accessories,
+		costume,
+		filter
+	}: Props = $props();
+
+	const SMORES: SmorePiece[] = [
+		{ x: -0.64, y: -0.52, rot: -20, kind: 'marshmallow' },
+		{ x: 0.72, y: -0.42, rot: 15, kind: 'chocolate' },
+		{ x: -0.78, y: 0.55, rot: 10, kind: 'graham' }
+	];
 
 	const HEAD_PATH =
 		'M -1.05 -0.05 C -1.05 -0.65 -0.6 -0.92 0 -0.92 C 0.6 -0.92 1.05 -0.65 1.05 -0.05 ' +
@@ -78,5 +101,10 @@
 	</g>
 	<g transform="scale({head.s})">
 		<Face {uid} {disposition} {irisFill} {anim} />
+		{#if accessories.includes('smores')}
+			<Smores pieces={SMORES} size={22 / head.s} />
+		{/if}
+		<Eyewear {accessories} t={anim.t} />
+		<HeadGear {uid} {accessories} {costume} t={anim.t} />
 	</g>
 </g>
