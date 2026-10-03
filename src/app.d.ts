@@ -3,7 +3,10 @@
 declare global {
 	namespace App {
 		// interface Error {}
-		// interface Locals {}
+		interface Locals {
+			/** The logged-in player, set in hooks.server.ts. */
+			user: import('./lib/server/auth').User | null;
+		}
 		// interface PageData {}
 		// interface PageState {}
 		// interface Platform {}

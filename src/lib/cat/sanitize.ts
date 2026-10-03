@@ -17,14 +17,6 @@ import {
 	type Cat
 } from './types';
 
-/** Where cats are saved. Swap the implementation for a server-backed one later; the UI won't change. */
-export interface CatStore {
-	load(): Cat | null;
-	save(cat: Cat): void;
-}
-
-const KEY = 'rainbow-smiles:cat';
-
 function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
 	return allowed.includes(value as T) ? (value as T) : fallback;
 }
@@ -37,7 +29,10 @@ function colorOf(value: unknown, options: Option<string>[], fallback: string): s
 	);
 }
 
-/** Turn anything (e.g. old or hand-edited saved data) into a valid Cat. */
+/**
+ * Turn anything (old saves, hand-edited data, requests from the network) into a valid Cat.
+ * Used on both the browser and the server.
+ */
 export function sanitizeCat(raw: unknown): Cat {
 	const r = (raw ?? {}) as Partial<Record<keyof Cat, unknown>>;
 	const d = DEFAULT_CAT;
@@ -57,21 +52,3 @@ export function sanitizeCat(raw: unknown): Cat {
 		background: oneOf(r.background, BACKGROUNDS, d.background)
 	};
 }
-
-export const localCatStore: CatStore = {
-	load() {
-		try {
-			const json = localStorage.getItem(KEY);
-			return json ? sanitizeCat(JSON.parse(json)) : null;
-		} catch {
-			return null;
-		}
-	},
-	save(cat) {
-		try {
-			localStorage.setItem(KEY, JSON.stringify(cat));
-		} catch {
-			// Storage can be unavailable (private mode, quota); the game still works without saving.
-		}
-	}
-};

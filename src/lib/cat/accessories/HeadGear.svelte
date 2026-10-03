@@ -5,6 +5,7 @@
 <script lang="ts">
 	import type { Costume } from '../costume';
 	import { ROBOT_DARK, ROBOT_METAL } from '../costume';
+	import { accessorySlot } from '../options';
 	import { OUTLINE } from '../style';
 	import type { Accessory } from '../types';
 
@@ -24,16 +25,18 @@
 
 <g stroke={OUTLINE} stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round">
 	{#if costume === 'robot'}
-		<!-- antenna with a blinking ball, wobbling on its spring -->
-		{@const tip = { x: 0.08 * Math.sin(t * 3), y: -1.42 }}
-		<path d="M 0 -0.9 Q 0.05 -1.15 {tip.x} {tip.y}" fill="none" stroke-width="3" {...ln} />
-		<circle
-			cx={tip.x}
-			cy={tip.y}
-			r="0.09"
-			fill={Math.sin(t * 5) > 0 ? '#ff5d73' : '#ffb3bf'}
-			{...ln}
-		/>
+		{#if !accessories.some((a) => accessorySlot(a) === 'head')}
+			<!-- antenna with a blinking ball, wobbling on its spring (hidden under hats) -->
+			{@const tip = { x: 0.08 * Math.sin(t * 3), y: -1.42 }}
+			<path d="M 0 -0.9 Q 0.05 -1.15 {tip.x} {tip.y}" fill="none" stroke-width="3" {...ln} />
+			<circle
+				cx={tip.x}
+				cy={tip.y}
+				r="0.09"
+				fill={Math.sin(t * 5) > 0 ? '#ff5d73' : '#ffb3bf'}
+				{...ln}
+			/>
+		{/if}
 		<!-- ear bolts -->
 		{#each [-1, 1] as side (side)}
 			<g transform="translate({side * 1.07} 0.12)">

@@ -3,18 +3,28 @@
 	import CatView from '#lib/cat/CatView.svelte';
 	import { useClock } from '#lib/cat/clock.svelte.ts';
 	import { DEFAULT_CAT } from '#lib/cat/options.ts';
-	import { localCatStore } from '#lib/cat/storage.ts';
-	import type { Cat } from '#lib/cat/types.ts';
+	import { catStoreFor, moveGuestCatsToAccount, type SavedCat } from '#lib/cat/store.ts';
+	import type { PageProps } from './$types';
 
-	let cat = $state<Cat>({ ...DEFAULT_CAT });
-	let hasSavedCat = $state(false);
+	let { data }: PageProps = $props();
+
+	let cats = $state<SavedCat[] | null>(null);
+	let message = $state('');
 	const clock = useClock();
 
-	onMount(() => {
-		const saved = localCatStore.load();
-		if (saved) {
-			cat = saved;
-			hasSavedCat = true;
+	onMount(async () => {
+		try {
+			if (data.user) {
+				const moved = await moveGuestCatsToAccount();
+				if (moved) {
+					message = `We moved ${moved} ${moved === 1 ? 'cat' : 'cats'} into your account!`;
+				}
+			}
+			cats = await catStoreFor(data.user).list();
+		} catch (err) {
+			console.error(err);
+			message = "Oh no, we couldn't find your cats right now. Try again in a bit!";
+			cats = [];
 		}
 	});
 </script>
@@ -25,11 +35,38 @@
 
 <main>
 	<h1>Rainbow Smiles<br />Funtime Place</h1>
-	<div class="cat"><CatView {cat} t={clock.t} /></div>
-	{#if hasSavedCat}
-		<p class="hello">Hi, {cat.name || 'kitty'}! 👋</p>
+
+	{#if message}
+		<p class="message">{message}</p>
 	{/if}
-	<a class="play" href="/design">{hasSavedCat ? '✨ Change my cat' : '✨ Design your cat'}</a>
+
+	{#if cats === null}
+		<p class="loading">Finding your cats…</p>
+	{:else if cats.length === 0}
+		<div class="hero"><CatView cat={DEFAULT_CAT} t={clock.t} /></div>
+		<a class="play" href="/design">✨ Design your first cat</a>
+	{:else}
+		<h2>My cats</h2>
+		<div class="cats">
+			{#each cats as saved (saved.id)}
+				<a class="card" href="/design?id={saved.id}">
+					<span class="pic"><CatView cat={saved.cat} t={clock.t} /></span>
+					<span class="name">{saved.cat.name || 'My cat'}</span>
+				</a>
+			{/each}
+			<a class="card new" href="/design">
+				<span class="plus">+</span>
+				<span class="name">New cat</span>
+			</a>
+		</div>
+	{/if}
+
+	{#if data.accountsEnabled && !data.user && cats?.length}
+		<p class="nudge">
+			Your cats are saved on this device. <a href="/login">Make an account</a> to keep them safe and play
+			on any computer!
+		</p>
+	{/if}
 </main>
 
 <style>
@@ -38,7 +75,9 @@
 		flex-direction: column;
 		align-items: center;
 		text-align: center;
-		padding: 24px 16px 40px;
+		padding: 8px 16px 40px;
+		max-width: 1100px;
+		margin: 0 auto;
 	}
 	h1 {
 		margin: 0;
@@ -50,14 +89,26 @@
 		color: transparent;
 		filter: drop-shadow(0 3px 0 #fff);
 	}
-	.cat {
+	h2 {
+		font-size: 2rem;
+		margin: 20px 0 12px;
+	}
+	.message {
+		font-size: 1.3rem;
+		font-weight: 600;
+		background: #fff;
+		padding: 10px 20px;
+		border-radius: 999px;
+	}
+	.loading {
+		font-size: 1.4rem;
+	}
+	.hero {
 		width: min(80vw, 420px);
 		aspect-ratio: 1;
-	}
-	.hello {
-		margin: 0 0 12px;
-		font-size: 1.8rem;
-		font-weight: 600;
+		border-radius: 28px;
+		overflow: hidden;
+		margin: 16px 0;
 	}
 	.play {
 		font-size: 1.8rem;
@@ -72,5 +123,52 @@
 	.play:active {
 		transform: translateY(4px);
 		box-shadow: 0 1px 0 var(--accent-dark);
+	}
+	.cats {
+		width: 100%;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+		gap: 16px;
+	}
+	.card {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 6px;
+		padding: 10px;
+		border-radius: 24px;
+		background: var(--card);
+		box-shadow: 0 6px 24px #e9b6d455;
+		text-decoration: none;
+		color: inherit;
+		transition: transform 0.12s;
+	}
+	.card:hover {
+		transform: scale(1.03) rotate(-1deg);
+	}
+	.pic {
+		width: 100%;
+		aspect-ratio: 1;
+		border-radius: 18px;
+		overflow: hidden;
+	}
+	.name {
+		font-size: 1.4rem;
+		font-weight: 700;
+	}
+	.new {
+		justify-content: center;
+		border: 4px dashed #ffc2dc;
+		background: #fff8fb;
+	}
+	.plus {
+		font-size: 5rem;
+		line-height: 1;
+		color: var(--accent);
+	}
+	.nudge {
+		margin-top: 24px;
+		font-size: 1.15rem;
+		max-width: 520px;
 	}
 </style>

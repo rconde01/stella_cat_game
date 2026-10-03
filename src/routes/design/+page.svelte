@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import CatView from '#lib/cat/CatView.svelte';
 	import { useClock } from '#lib/cat/clock.svelte.ts';
 	import {
@@ -19,8 +19,11 @@
 		randomName,
 		type Option
 	} from '#lib/cat/options.ts';
-	import { localCatStore } from '#lib/cat/storage.ts';
+	import { catStoreFor } from '#lib/cat/store.ts';
 	import { RAINBOW, type Cat } from '#lib/cat/types.ts';
+	import { goto, replaceState } from '$app/navigation';
+	import { page } from '$app/state';
+	import type { PageProps } from './$types';
 
 	const TABS = [
 		{ id: 'name', label: 'Name', icon: '✏️' },
@@ -43,22 +46,84 @@
 
 	type TabId = (typeof TABS)[number]['id'];
 
+	let { data }: PageProps = $props();
+
 	let cat = $state<Cat>({ ...DEFAULT_CAT });
 	let tab = $state<TabId>('shape');
-	let loaded = $state(false);
+	/** The saved cat's id; null until a new cat is first saved. */
+	let id = $state<string | null>(null);
+	let status = $state<'loading' | 'idle' | 'saving' | 'saved' | 'error'>('loading');
+	let confirmingDelete = $state(false);
 
 	const clock = useClock();
+	const store = $derived(catStoreFor(data.user));
 
-	onMount(() => {
-		const saved = localCatStore.load();
-		if (saved) cat = saved;
-		loaded = true;
+	/** JSON of what's saved, so we only save real changes (and don't create untouched new cats). */
+	let lastSaved = '';
+	let saveTimer: ReturnType<typeof setTimeout> | undefined;
+	let saveChain = Promise.resolve();
+
+	onMount(async () => {
+		const wanted = page.url.searchParams.get('id');
+		try {
+			const found = wanted ? (await store.list()).find((s) => s.id === wanted) : undefined;
+			if (found) {
+				id = found.id;
+				cat = found.cat;
+			} else {
+				cat = { ...DEFAULT_CAT, name: randomName() };
+			}
+			lastSaved = JSON.stringify(cat);
+			status = 'idle';
+		} catch (err) {
+			console.error(err);
+			status = 'error';
+		}
 	});
 
+	// Autosave a moment after the last change.
+	let pending = '';
 	$effect(() => {
-		const snapshot = $state.snapshot(cat);
-		if (loaded) localCatStore.save(snapshot);
+		const json = JSON.stringify($state.snapshot(cat));
+		if (status === 'loading' || json === lastSaved) return;
+		pending = json;
+		clearTimeout(saveTimer);
+		saveTimer = setTimeout(() => save(json), 600);
 	});
+
+	// Leaving the page: save right away instead of waiting.
+	onDestroy(() => {
+		clearTimeout(saveTimer);
+		if (pending && pending !== lastSaved) save(pending);
+	});
+
+	function save(json: string) {
+		// Saves run one after another so a new cat is only ever created once.
+		saveChain = saveChain.then(async () => {
+			if (json === lastSaved) return;
+			status = 'saving';
+			try {
+				const saved = await store.save(id, JSON.parse(json));
+				lastSaved = json;
+				if (!id) {
+					id = saved.id;
+					replaceState(`/design?id=${id}`, {});
+				}
+				status = 'saved';
+			} catch (err) {
+				console.error(err);
+				status = 'error';
+			}
+		});
+	}
+
+	async function deleteCat() {
+		clearTimeout(saveTimer);
+		pending = '';
+		await saveChain;
+		if (id) await store.remove(id);
+		goto('/');
+	}
 
 	function surprise() {
 		cat = randomCat(cat.name);
@@ -115,15 +180,32 @@
 
 <main>
 	<header>
-		<a class="home" href="/" aria-label="Home">🏠</a>
+		<a class="home" href="/">🏠 My cats</a>
 		<h1>Design your cat!</h1>
+		<span class="status" class:error={status === 'error'}>
+			{#if status === 'saving'}Saving…{:else if status === 'saved'}✓ Saved{:else if status === 'error'}⚠️
+				Couldn't save{/if}
+		</span>
 	</header>
 
 	<div class="designer">
 		<section class="stage">
 			<div class="name-banner">{cat.name || 'My cat'}</div>
 			<div class="cat"><CatView {cat} t={clock.t} /></div>
-			<button class="surprise" onclick={surprise}>🎲 Surprise me!</button>
+			<div class="stage-buttons">
+				<button class="surprise" onclick={surprise}>🎲 Surprise me!</button>
+				{#if id}
+					{#if confirmingDelete}
+						<span class="confirm">
+							Say goodbye to {cat.name || 'this cat'}?
+							<button class="yes" onclick={deleteCat}>Yes</button>
+							<button class="no" onclick={() => (confirmingDelete = false)}>No</button>
+						</span>
+					{:else}
+						<button class="delete" onclick={() => (confirmingDelete = true)}>🗑️ Delete</button>
+					{/if}
+				{/if}
+			</div>
 		</section>
 
 		<section class="panel">
@@ -245,8 +327,51 @@
 		gap: 12px;
 	}
 	.home {
-		font-size: 2rem;
+		font-size: 1.2rem;
+		font-weight: 600;
 		text-decoration: none;
+		color: inherit;
+		padding: 6px 14px;
+		border-radius: 999px;
+		background: #fff;
+		box-shadow: 0 2px 8px #e9b6d455;
+		white-space: nowrap;
+	}
+	.status {
+		margin-left: auto;
+		font-weight: 600;
+		opacity: 0.75;
+		white-space: nowrap;
+	}
+	.status.error {
+		color: #c2185b;
+		opacity: 1;
+	}
+	.stage-buttons {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: 12px;
+	}
+	.delete,
+	.confirm button {
+		font-size: 1.05rem;
+		font-weight: 600;
+		padding: 8px 16px;
+		border-radius: 999px;
+		border: 3px solid #f1e4f5;
+		background: #fff;
+		cursor: pointer;
+	}
+	.confirm {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-weight: 600;
+	}
+	.confirm .yes {
+		border-color: #ff8fa8;
 	}
 	h1 {
 		margin: 0;

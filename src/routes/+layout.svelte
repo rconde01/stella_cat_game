@@ -1,7 +1,8 @@
 <script lang="ts">
 	import favicon from '#lib/assets/favicon.svg';
+	import type { LayoutProps } from './$types';
 
-	let { children } = $props();
+	let { children, data }: LayoutProps = $props();
 </script>
 
 <svelte:head>
@@ -13,6 +14,19 @@
 		href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap"
 	/>
 </svelte:head>
+
+{#if data.accountsEnabled}
+	<nav class="account">
+		{#if data.user}
+			<span class="who">🐱 {data.user.username}</span>
+			<form method="POST" action="/logout">
+				<button>Log out</button>
+			</form>
+		{:else}
+			<a href="/login">👤 Log in</a>
+		{/if}
+	</nav>
+{/if}
 
 {@render children()}
 
@@ -46,5 +60,29 @@
 	:global(button) {
 		font-family: inherit;
 		color: inherit;
+	}
+	.account {
+		display: flex;
+		justify-content: flex-end;
+		align-items: center;
+		gap: 10px;
+		padding: 10px 16px 0;
+		font-size: 1.05rem;
+		font-weight: 600;
+	}
+	.account a,
+	.account button {
+		text-decoration: none;
+		color: inherit;
+		font: inherit;
+		padding: 6px 14px;
+		border-radius: 999px;
+		border: none;
+		background: #fff;
+		box-shadow: 0 2px 8px #e9b6d455;
+		cursor: pointer;
+	}
+	.account form {
+		margin: 0;
 	}
 </style>
