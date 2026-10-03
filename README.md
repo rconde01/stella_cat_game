@@ -2,6 +2,8 @@
 
 A cat-themed web game built by Rob and Stella.
 
+**Play it:** <https://stella-cat-game.vercel.app/>
+
 See [CLAUDE.md](./CLAUDE.md) for the full project overview, tech stack, setup log, and conventions.
 
 ## Quick start

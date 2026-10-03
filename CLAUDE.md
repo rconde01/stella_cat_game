@@ -81,7 +81,7 @@ to the `sveltekit()` plugin in `vite.config.ts`.
 
 ## Hosting & data
 
-**Decision: Vercel** (account already exists).
+**Decision: Vercel** (account already exists). Live at <https://stella-cat-game.vercel.app/>.
 
 - GitHub Pages only serves static files. It _could_ still save data in the browser (`localStorage` /
   IndexedDB), but that data lives on one device/browser only. Anything shared across devices, or
@@ -127,13 +127,13 @@ A running record of how this project was set up, in order.
    prompts. Fix: run once with `$env:GIT_TERMINAL_PROMPT='1'; $env:GCM_INTERACTIVE='always'; git push`,
    which opens the Git Credential Manager browser sign-in; the credential is then cached for future pushes.
 
-### Pending — Vercel (needs Rob's login, one-time)
+### 2026-10-03 — Vercel deployment
 
-1. Go to <https://vercel.com/new> and sign in (use "Continue with GitHub").
-2. Import the `rconde01/stella_cat_game` repository (grant Vercel access to it if prompted).
-3. Framework preset is auto-detected as **SvelteKit**; leave build settings at defaults. Click **Deploy**.
-4. After that, every push to `main` deploys to production; other branches get preview URLs.
-5. Record the production URL here once it exists.
+1. At <https://vercel.com/new>, signed in with GitHub and imported `rconde01/stella_cat_game`.
+2. Framework preset auto-detected as **SvelteKit**; build settings left at defaults; deployed.
+3. Every push to `main` deploys to production; other branches/PRs get preview URLs.
+
+**Production URL:** <https://stella-cat-game.vercel.app/>
 
 ## Ideas backlog
 
