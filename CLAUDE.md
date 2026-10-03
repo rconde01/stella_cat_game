@@ -123,6 +123,9 @@ A running record of how this project was set up, in order.
 5. **Placeholder page:** Replaced the SvelteKit welcome page with a "Stella's Cat Game" placeholder.
 6. **Verified:** `npm run lint`, `npm run check`, `npm run build` all pass.
 7. **Git:** Initial commit pushed to `https://github.com/rconde01/stella_cat_game` (`main`).
+   The first push failed with "terminal prompts disabled" because Claude Code's shell disables git
+   prompts. Fix: run once with `$env:GIT_TERMINAL_PROMPT='1'; $env:GCM_INTERACTIVE='always'; git push`,
+   which opens the Git Credential Manager browser sign-in; the credential is then cached for future pushes.
 
 ### Pending — Vercel (needs Rob's login, one-time)
 
