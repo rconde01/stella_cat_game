@@ -1,20 +1,53 @@
-# Stella's Cat Game
+# Rainbow Smiles Funtime Place
 
-A cat-based game website that Rob is building together with Rob's daughter, Stella. The game's design is
+**Rainbow Smiles Funtime Place** is a cat-based game website that Rob is building together with Rob's daughter, Stella. The game's design is
 driven by Stella's ideas, so sessions with her should focus on **what the game does**, not on tooling.
 Keep the boilerplate/infra boring and working so creative time isn't spent on setup.
 
 ## Project overview
 
+- **Name:** Rainbow Smiles Funtime Place. (The repo/package are still called `stella_cat_game` /
+  `stella-cat-game`; that's fine and doesn't need renaming.)
 - **What:** A browser game about cats, delivered as a website.
-- **First feature (not started yet):** A **cat designer** — Stella designs a cat using **vector graphics
-  drawn on an HTML `<canvas>`**. Cat parts (body, head, ears, tail, eyes, colors, patterns…) should be
-  modelled as data (TypeScript types) and rendered to canvas from that data, so a designed cat can be
-  saved, loaded, and reused elsewhere in the game.
+- **First feature (not started yet):** A **cat designer**, where the player designs their own cat. See
+  [Feature: Cat designer](#feature-cat-designer).
 - **Persistence:** We will probably want to save data between sessions (e.g. saved cats). See
   [Hosting & data](#hosting--data) for the plan.
 - **Audience:** A kid. Prefer big, friendly, forgiving UI; avoid anything that needs typing or reading
   long text where possible.
+
+## Feature: Cat designer
+
+The first part of the game: the player designs their cat. The cat is drawn as **vector graphics on an
+HTML `<canvas>`**. Each choice below is stored as data (TypeScript types) and the cat is drawn from that
+data, so a designed cat can be saved, loaded, and reused elsewhere in the game.
+
+What the player can choose:
+
+| Choice               | Notes                                                                            |
+| -------------------- | -------------------------------------------------------------------------------- |
+| **Shape**            | Pick from several body shapes / builds.                                          |
+| **Pose**             | Pick from several poses (e.g. sitting, standing, lying down).                    |
+| **Pattern**          | Coat pattern (e.g. solid, stripes/tabby, spots, patches).                        |
+| **Color**            | Main coat color.                                                                 |
+| **Color highlights** | Secondary/accent color (used by the pattern, belly, paws, ear tips…).            |
+| **Eye color**        | Iris color.                                                                      |
+| **Disposition**      | The cat's personality, shown on its face — e.g. a **grumpy** face, a happy face. |
+| **Name**             | The cat's name, typed by the player.                                             |
+
+**Animation:** The cat should have small idle animations — e.g. the face moving (blinking, expression
+shifting) and the tail swishing. Disposition can influence the animation (a grumpy cat's tail flicks,
+a happy cat's tail sways).
+
+Design notes:
+
+- Model the cat as one plain data object, e.g. `Cat { name, shape, pose, pattern, color, highlightColor,
+eyeColor, disposition }`, with each option as a union of string ids (`'grumpy' | 'happy' | …`).
+- Drawing is a pure function `drawCat(ctx, cat, t)` where `t` is the animation time; a
+  `requestAnimationFrame` loop in the Svelte component calls it each frame.
+- Build each pose from shared parts (body, head, ears, tail, face) so adding a shape/pose/disposition
+  doesn't mean redrawing everything.
+- Option pickers should be big, visual buttons (swatches and little previews), not dropdowns.
 
 ## Tech stack
 
@@ -139,4 +172,4 @@ A running record of how this project was set up, in order.
 
 _(Fill in with Stella!)_
 
-- Cat designer (vector graphics on canvas) — first feature.
+- Cat designer — first feature, spec'd above.

@@ -1,4 +1,4 @@
-# Stella's Cat Game
+# Rainbow Smiles Funtime Place
 
 A cat-themed web game built by Rob and Stella.
 

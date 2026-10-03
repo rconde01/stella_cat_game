@@ -1,6 +1,6 @@
 <svelte:head>
-	<title>Stella's Cat Game</title>
+	<title>Rainbow Smiles Funtime Place</title>
 </svelte:head>
 
-<h1>Stella's Cat Game</h1>
+<h1>Rainbow Smiles Funtime Place</h1>
 <p>Coming soon: design your very own cat!</p>
