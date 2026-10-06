@@ -115,6 +115,41 @@ To test real interactions (clicking, autosave, logging in), drive the installed 
 `playwright-core` (`chromium.launch({ channel: 'msedge' })` — no browser download needed). Install it
 in a scratch folder, not in this project.
 
+## Feature: Looking after your cat (Tamagotchi-style)
+
+Tapping a cat on **My cats** opens its page, `/cat?id=<id>`. Rules live in `lib/care/care.ts` (pure,
+unit-tested in `care.test.ts`).
+
+- **Three needs**, 0–100: 🐟 Food (empties in ~3h), 🪶 Play (~2h), 🪮 Brushed (~5h). They keep going
+  down while you're away (`advanceCare` catches up minute by minute when the page opens).
+- **The cat never gets sick or dies** (Rob's rule: too sad). Instead, after ~12 minutes with any need
+  below 20, it **poops or pees on one of your favorite things** (teddy, slippers, backpack, pillow),
+  at most one mess per item. Tap a mess to clean it. Which item and poop-vs-pee is "random" but seeded
+  by the minute it happened, so every page and every catch-up agrees.
+- **Feed**: a bowl appears and the cat munches (+35). Feeding a full cat annoys it.
+- **Play**: wave a feather wand over the stage; the cat's eyes follow it; moving fills the meter.
+- **Brush**: rub the brush over the cat; sparkles and fur tufts fly and it purrs. Brushing an already
+  shiny cat annoys it.
+- **Pet** (default): tap or stroke. Happy → purrs (^^ eyes, hearts); needy → meows.
+- **Annoyance** builds from rapid poking, overfeeding and over-brushing and fades over time. Past a
+  limit (lower for grumpy cats) the cat **hisses**: angry face, flat ears, fangs, 💢.
+- Needy cats **meow** every ~15s with a thought bubble showing what they want; happy cats purr now and
+  then. My cats shows badges per cat (🐟🪶🪮 needs, 💩💦 messes, 💕 all good).
+- Care is saved separately from the cat's look (`SavedCat.care`; `PATCH /api/cats/:id` with `{ care }`).
+
+## Sound & music
+
+All synthesized with the Web Audio API in `lib/audio/` — no audio files:
+
+- `engine.ts`: meow (sawtooth with a pitch glide + sweeping vowel filters; higher for kittens, lower for
+  grumpy cats), hiss (filtered noise burst), purr (low noise pulsing 25×/s, swelling slowly), nom,
+  brush swish, sparkle arpeggio, button pop, and the mess sounds (a "plop… pfrrt" and a trickle).
+- `music.ts`: an 8-bar C–Am–F–G loop (triangle lead, sine bass, sparkly arpeggio) scheduled with a
+  look-ahead timer.
+- `settings.svelte.ts`: 🎵/🔊 toggles in the top bar, remembered per browser. Browsers block audio
+  until the first tap, so audio starts on the first pointer/key press.
+- These were tuned without listening — expect to tweak by ear (or swap in recorded CC0 sounds).
+
 ## Tech stack
 
 | Concern          | Choice                                                                       |
@@ -145,12 +180,13 @@ npm run dev -- --open  # dev server at http://localhost:5173
 npm run check          # svelte-check / TypeScript type-check
 npm run lint           # prettier --check + eslint
 npm run format         # prettier --write
+npm test               # unit tests (Vitest)
 npm run build          # production build (emits Vercel output)
 npm run preview        # serve the production build locally
 ```
 
-Before committing, run `npm run format`, `npm run lint`, `npm run check`, and `npm run build`; all four
-should pass.
+Before committing, run `npm run format`, `npm run lint`, `npm run check`, `npm test` and
+`npm run build`; all should pass.
 
 ## Project layout
 
@@ -306,6 +342,15 @@ A running record of how this project was set up, in order.
 3. Verified with an HTTP test (register/login/logout, duplicate names, 401 when logged out, a second
    player can't read/edit/delete someone else's cat) and a real-browser Playwright run of the full
    guest → sign up → cats moved → edit/reload → delete → log out → log in flow.
+
+### 2026-10-06 — Care (Tamagotchi), sound & music
+
+1. Added the cat page (`/cat`) with feed / play / brush / pet, annoyance → hiss, meows and purrs,
+   and mischief messes on your favorite stuff instead of sickness.
+2. Added synthesized sound effects and background music with on/off toggles.
+3. Saved cats gained a `care` part (new `care` column, added automatically to existing databases) and
+   are now listed oldest-first. API update changed from `PUT` to `PATCH { cat?, care? }`.
+4. Added Vitest (`npm test`) with unit tests for the care rules; checked the page in a real browser.
 
 ### Pending — connect the Turso database in Vercel (needs Rob's login, one-time)
 

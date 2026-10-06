@@ -1,12 +1,15 @@
-import { error, json } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import { deleteCat, updateCat } from '#lib/server/cats.ts';
 import type { RequestHandler } from './$types';
 
-export const PUT: RequestHandler = async ({ locals, params, request }) => {
+/** Body: { cat?, care? } — only the given parts change. */
+export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user) error(401, 'Not logged in');
-	const saved = await updateCat(locals.user.id, params.id, await request.json());
-	if (!saved) error(404, 'Cat not found');
-	return json(saved);
+	const body = (await request.json()) ?? {};
+	if (!(await updateCat(locals.user.id, params.id, { cat: body.cat, care: body.care }))) {
+		error(404, 'Cat not found');
+	}
+	return new Response(null, { status: 204 });
 };
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {

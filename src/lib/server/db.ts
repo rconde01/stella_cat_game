@@ -28,11 +28,25 @@ const SCHEMA = [
 		id TEXT PRIMARY KEY,
 		user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 		data TEXT NOT NULL,
+		care TEXT,
 		created_at INTEGER NOT NULL,
 		updated_at INTEGER NOT NULL
 	)`,
 	`CREATE INDEX IF NOT EXISTS cats_by_user ON cats(user_id, updated_at)`
 ];
+
+/** Columns added after a table was first created (SQLite has no ADD COLUMN IF NOT EXISTS). */
+const ADDED_COLUMNS = [{ table: 'cats', column: 'care', type: 'TEXT' }];
+
+async function createSchema(c: Client): Promise<void> {
+	await c.batch(SCHEMA, 'write');
+	for (const { table, column, type } of ADDED_COLUMNS) {
+		const { rows } = await c.execute(`PRAGMA table_info(${table})`);
+		if (!rows.some((r) => r.name === column)) {
+			await c.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+		}
+	}
+}
 
 function databaseUrl(): string | undefined {
 	return TURSO_DATABASE_URL ?? (dev ? 'file:local.db' : undefined);
@@ -50,8 +64,7 @@ export async function db(): Promise<Client> {
 		client = createClient({ url, authToken: TURSO_AUTH_TOKEN });
 	}
 	if (!ready) {
-		const c = client;
-		ready = c.batch(SCHEMA, 'write').then(() => undefined);
+		ready = createSchema(client);
 		ready.catch(() => (ready = null));
 	}
 	await ready;

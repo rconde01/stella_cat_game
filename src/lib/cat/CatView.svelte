@@ -4,7 +4,7 @@
 <script lang="ts">
 	import CostumeBody from './accessories/CostumeBody.svelte';
 	import Smores, { type SmorePiece } from './accessories/Smores.svelte';
-	import { animate } from './animation';
+	import { animate, react, type CatAction } from './animation';
 	import { RAINBOW_STOPS, shade } from './color';
 	import { costumeLimbLayers, costumeOf } from './costume';
 	import {
@@ -21,7 +21,7 @@
 	import Part from './parts/Part.svelte';
 	import { limbDash, patternPath } from './patterns';
 	import Scenery from './Scenery.svelte';
-	import { RAINBOW, type Cat } from './types';
+	import { RAINBOW, type Cat, type Disposition } from './types';
 
 	interface Props {
 		cat: Cat;
@@ -31,14 +31,35 @@
 		focus?: 'full' | 'cat' | 'face';
 		/** Draw the cat's background. */
 		scenery?: boolean;
+		/** Show this mood instead of the cat's own (e.g. while hissing). */
+		expression?: Disposition | null;
+		/** Something the cat is doing right now. */
+		action?: CatAction;
+		/** A point in the 400×400 scene for the cat to look at (e.g. a toy). */
+		lookAt?: { x: number; y: number } | null;
 	}
 
-	let { cat, t = 0, focus = 'full', scenery = true }: Props = $props();
+	let {
+		cat,
+		t = 0,
+		focus = 'full',
+		scenery = true,
+		expression = null,
+		action = null,
+		lookAt = null
+	}: Props = $props();
 
 	const uid = $props.id();
 
 	const layout = $derived(layoutCat(cat));
-	const anim = $derived(animate(cat.disposition, t));
+	const mood = $derived(expression ?? cat.disposition);
+	const look = $derived.by(() => {
+		if (!lookAt) return null;
+		const { x, y, s } = layout.head;
+		const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
+		return { x: clamp((lookAt.x - x) / s / 6, 0.08), y: clamp((lookAt.y - y) / s / 6, 0.07) };
+	});
+	const anim = $derived(react(animate(mood, t), action, look));
 	const costume = $derived(costumeOf(cat.accessories));
 	const showScenery = $derived(scenery && cat.background !== 'none');
 
@@ -205,7 +226,8 @@
 			coatFill={cat.color}
 			{markingFill}
 			pattern={cat.pattern}
-			disposition={cat.disposition}
+			disposition={mood}
+			{action}
 			irisFill="url(#{uid}-iris)"
 			accessories={cat.accessories}
 			{costume}

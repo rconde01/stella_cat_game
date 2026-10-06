@@ -2,7 +2,7 @@
 	Eyes, nose, mouth, whiskers and mood extras, in head units. The disposition decides the expression.
 -->
 <script lang="ts">
-	import type { AnimState } from '../animation';
+	import type { AnimState, CatAction } from '../animation';
 	import { BLUSH, MOUTH, NOSE, OUTLINE, TONGUE } from '../style';
 	import type { Disposition } from '../types';
 	import Eye from './Eye.svelte';
@@ -12,12 +12,16 @@
 		disposition: Disposition;
 		irisFill: string;
 		anim: AnimState;
+		/** Something the cat is doing right now; overrides parts of the mood's face. */
+		action?: CatAction;
 	}
 
-	let { uid, disposition, irisFill, anim }: Props = $props();
+	let { uid, disposition, irisFill, anim, action = null }: Props = $props();
 
 	const t = $derived(anim.t);
-	const lid = $derived(disposition === 'grumpy' ? 'angry' : 'none');
+	const angry = $derived(disposition === 'grumpy' || action === 'hissing');
+	const lid = $derived(angry ? 'angry' : 'none');
+	const chomp = $derived(Math.sin(t * 14) > 0);
 	const blush = $derived(
 		{ happy: 0.45, grumpy: 0, sleepy: 0.3, silly: 0.45, shy: 0.75 }[disposition]
 	);
@@ -83,7 +87,8 @@
 		lookX={anim.lookX}
 		lookY={anim.lookY}
 		{lid}
-		wink={disposition === 'silly'}
+		wink={disposition === 'silly' && !action}
+		happyClosed={action === 'purring'}
 	/>
 	<Eye
 		clipId="{uid}-eye-r"
@@ -95,9 +100,10 @@
 		lookX={anim.lookX}
 		lookY={anim.lookY}
 		{lid}
+		happyClosed={action === 'purring'}
 	/>
 
-	{#if disposition === 'grumpy'}
+	{#if angry}
 		<g stroke-width="6">
 			<path d="M 0.2 -0.36 L 0.62 -0.5" {...ln} />
 			<path d="M -0.2 -0.36 L -0.62 -0.5" {...ln} />
@@ -114,7 +120,23 @@
 
 	<!-- mouth -->
 	<g stroke-width="3">
-		{#if disposition === 'happy'}
+		{#if action === 'eating'}
+			{#if chomp}
+				<ellipse cx="0" cy="0.55" rx="0.1" ry="0.09" fill={MOUTH} {...ln} />
+			{:else}
+				<path d="M -0.14 0.47 Q -0.07 0.56 0 0.48 Q 0.07 0.56 0.14 0.47" {...ln} />
+			{/if}
+		{:else if action === 'hissing'}
+			<path
+				d="M -0.2 0.47 Q 0 0.42 0.2 0.47 Q 0.16 0.74 0 0.75 Q -0.16 0.74 -0.2 0.47 Z"
+				fill="#a8243f"
+				{...ln}
+			/>
+			<path d="M -0.13 0.47 L -0.1 0.57 L -0.07 0.47 Z" fill="white" stroke-width="1.5" {...ln} />
+			<path d="M 0.13 0.47 L 0.1 0.57 L 0.07 0.47 Z" fill="white" stroke-width="1.5" {...ln} />
+		{:else if action === 'purring'}
+			<path d="M -0.2 0.43 Q -0.1 0.57 0 0.45 Q 0.1 0.57 0.2 0.43" {...ln} />
+		{:else if disposition === 'happy'}
 			<path d="M -0.07 0.49 Q 0 0.66 0.07 0.49 Z" fill={MOUTH} {...ln} />
 			<path d="M -0.2 0.43 Q -0.1 0.57 0 0.45 Q 0.1 0.57 0.2 0.43" {...ln} />
 		{:else if disposition === 'grumpy'}
@@ -132,8 +154,10 @@
 		{/if}
 	</g>
 
-	<!-- mood extras -->
-	{#if disposition === 'grumpy'}
+	<!-- mood extras (an action replaces them, except the anger mark when hissing) -->
+	{#if action && action !== 'hissing'}
+		<!-- none -->
+	{:else if angry}
 		<g
 			transform="translate(0.62 -0.66) scale({0.9 + 0.12 * Math.sin(t * 6)})"
 			stroke="#e5383b"

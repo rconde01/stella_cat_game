@@ -1,22 +1,32 @@
+import { sanitizeCare, type Care } from '../care/care';
 import { sanitizeCat } from './sanitize';
 import type { Cat } from './types';
 
 /**
  * Where a player's cats are kept. Logged-in players use the server (their account); guests use this
  * browser's localStorage. The UI only talks to the CatStore interface.
+ *
+ * A saved cat has two independent parts: `cat` (how it looks, edited in the designer) and `care`
+ * (food / play / brushing, edited on the cat's page), so the two pages never overwrite each other.
  */
 
 export interface SavedCat {
 	id: string;
 	cat: Cat;
-	updatedAt: number;
+	care: Care;
+	createdAt: number;
+}
+
+export interface CatPatch {
+	cat?: Cat;
+	care?: Care;
 }
 
 export interface CatStore {
-	/** Newest first. */
+	/** Oldest first, so cats stay in the same order. */
 	list(): Promise<SavedCat[]>;
-	/** Creates the cat when `id` is null. */
-	save(id: string | null, cat: Cat): Promise<SavedCat>;
+	create(cat: Cat, care?: Care): Promise<SavedCat>;
+	update(id: string, patch: CatPatch): Promise<void>;
 	remove(id: string): Promise<void>;
 }
 
@@ -28,10 +38,14 @@ function readLocal(): SavedCat[] {
 	try {
 		const old = localStorage.getItem(OLD_SINGLE_CAT_KEY);
 		if (old) {
-			const migrated = [
-				{ id: crypto.randomUUID(), cat: sanitizeCat(JSON.parse(old)), updatedAt: Date.now() }
-			];
-			writeLocal([...migrated, ...readLocalRaw()]);
+			const now = Date.now();
+			const migrated: SavedCat = {
+				id: crypto.randomUUID(),
+				cat: sanitizeCat(JSON.parse(old)),
+				care: sanitizeCare(null, now),
+				createdAt: now
+			};
+			writeLocal([migrated, ...readLocalRaw()]);
 			localStorage.removeItem(OLD_SINGLE_CAT_KEY);
 		}
 		return readLocalRaw();
@@ -43,10 +57,12 @@ function readLocal(): SavedCat[] {
 function readLocalRaw(): SavedCat[] {
 	const raw: unknown = JSON.parse(localStorage.getItem(KEY) ?? '[]');
 	if (!Array.isArray(raw)) return [];
-	return raw.map((s: Partial<SavedCat>) => ({
+	const now = Date.now();
+	return raw.map((s: Partial<SavedCat> & { updatedAt?: number }) => ({
 		id: String(s.id),
 		cat: sanitizeCat(s.cat),
-		updatedAt: Number(s.updatedAt) || 0
+		care: sanitizeCare(s.care, now),
+		createdAt: Number(s.createdAt ?? s.updatedAt) || 0
 	}));
 }
 
@@ -60,12 +76,21 @@ function writeLocal(cats: SavedCat[]): void {
 
 export const localCatStore: CatStore & { clear(): void } = {
 	async list() {
-		return readLocal().sort((a, b) => b.updatedAt - a.updatedAt);
+		return readLocal().sort((a, b) => a.createdAt - b.createdAt);
 	},
-	async save(id, cat) {
-		const saved: SavedCat = { id: id ?? crypto.randomUUID(), cat, updatedAt: Date.now() };
-		writeLocal([saved, ...readLocal().filter((s) => s.id !== saved.id)]);
+	async create(cat, care) {
+		const now = Date.now();
+		const saved: SavedCat = {
+			id: crypto.randomUUID(),
+			cat,
+			care: care ?? sanitizeCare(null, now),
+			createdAt: now
+		};
+		writeLocal([...readLocal(), saved]);
 		return saved;
+	},
+	async update(id, patch) {
+		writeLocal(readLocal().map((s) => (s.id === id ? { ...s, ...patch } : s)));
 	},
 	async remove(id) {
 		writeLocal(readLocal().filter((s) => s.id !== id));
@@ -86,10 +111,10 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const accountCatStore: CatStore = {
 	list: () => api<SavedCat[]>('/api/cats'),
-	save: (id, cat) =>
-		id
-			? api<SavedCat>(`/api/cats/${id}`, { method: 'PUT', body: JSON.stringify(cat) })
-			: api<SavedCat>('/api/cats', { method: 'POST', body: JSON.stringify(cat) }),
+	create: (cat, care) =>
+		api<SavedCat>('/api/cats', { method: 'POST', body: JSON.stringify({ cat, care }) }),
+	update: (id, patch) =>
+		api<void>(`/api/cats/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
 	remove: (id) => api<void>(`/api/cats/${id}`, { method: 'DELETE' })
 };
 
@@ -103,8 +128,8 @@ export function catStoreFor(user: { id: string } | null): CatStore {
  */
 export async function moveGuestCatsToAccount(): Promise<number> {
 	const guestCats = await localCatStore.list();
-	for (const saved of guestCats.reverse()) {
-		await accountCatStore.save(null, saved.cat);
+	for (const saved of guestCats) {
+		await accountCatStore.create(saved.cat, saved.care);
 	}
 	localCatStore.clear();
 	return guestCats.length;

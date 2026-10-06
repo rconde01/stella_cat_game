@@ -103,12 +103,13 @@
 			if (json === lastSaved) return;
 			status = 'saving';
 			try {
-				const saved = await store.save(id, JSON.parse(json));
-				lastSaved = json;
-				if (!id) {
-					id = saved.id;
+				if (id) {
+					await store.update(id, { cat: JSON.parse(json) });
+				} else {
+					id = (await store.create(JSON.parse(json))).id;
 					replaceState(`/design?id=${id}`, {});
 				}
+				lastSaved = json;
 				status = 'saved';
 			} catch (err) {
 				console.error(err);
@@ -195,6 +196,7 @@
 			<div class="stage-buttons">
 				<button class="surprise" onclick={surprise}>🎲 Surprise me!</button>
 				{#if id}
+					<a class="done" href="/cat?id={id}">✅ Done — let's play!</a>
 					{#if confirmingDelete}
 						<span class="confirm">
 							Say goodbye to {cat.name || 'this cat'}?
@@ -435,6 +437,16 @@
 		color: white;
 		cursor: pointer;
 		box-shadow: 0 4px 0 var(--accent-dark);
+	}
+	.done {
+		font-size: 1.3rem;
+		font-weight: 600;
+		padding: 12px 24px;
+		border-radius: 999px;
+		background: #5fcf80;
+		color: white;
+		text-decoration: none;
+		box-shadow: 0 4px 0 #3ea862;
 	}
 	.surprise:active,
 	.dice:active {

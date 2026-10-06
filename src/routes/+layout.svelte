@@ -1,8 +1,12 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import favicon from '#lib/assets/favicon.svg';
+	import { setupAudio, soundSettings, toggleMusic, toggleSfx } from '#lib/audio/settings.svelte.ts';
 	import type { LayoutProps } from './$types';
 
 	let { children, data }: LayoutProps = $props();
+
+	onMount(setupAudio);
 </script>
 
 <svelte:head>
@@ -15,8 +19,22 @@
 	/>
 </svelte:head>
 
-{#if data.accountsEnabled}
-	<nav class="account">
+<nav class="account">
+	<button
+		class="toggle"
+		class:off={!soundSettings.music}
+		onclick={toggleMusic}
+		aria-pressed={soundSettings.music}
+		title="Music">🎵</button
+	>
+	<button
+		class="toggle"
+		class:off={!soundSettings.sfx}
+		onclick={toggleSfx}
+		aria-pressed={soundSettings.sfx}
+		title="Sounds">{soundSettings.sfx ? '🔊' : '🔇'}</button
+	>
+	{#if data.accountsEnabled}
 		{#if data.user}
 			<span class="who">🐱 {data.user.username}</span>
 			<form method="POST" action="/logout">
@@ -25,8 +43,8 @@
 		{:else}
 			<a href="/login">👤 Log in</a>
 		{/if}
-	</nav>
-{/if}
+	{/if}
+</nav>
 
 {@render children()}
 
@@ -84,5 +102,13 @@
 	}
 	.account form {
 		margin: 0;
+	}
+	.account .toggle {
+		font-size: 1.2rem;
+		padding: 4px 10px;
+	}
+	.account .toggle.off {
+		opacity: 0.45;
+		text-decoration: line-through;
 	}
 </style>

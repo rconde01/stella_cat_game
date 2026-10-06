@@ -4,6 +4,7 @@
 	import { useClock } from '#lib/cat/clock.svelte.ts';
 	import { DEFAULT_CAT } from '#lib/cat/options.ts';
 	import { catStoreFor, moveGuestCatsToAccount, type SavedCat } from '#lib/cat/store.ts';
+	import { advanceCare, needs, type Need } from '#lib/care/care.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -11,6 +12,9 @@
 	let cats = $state<SavedCat[] | null>(null);
 	let message = $state('');
 	const clock = useClock();
+	const now = Date.now();
+
+	const NEED_ICONS: Record<Need, string> = { food: '🐟', play: '🪶', brush: '🪮' };
 
 	onMount(async () => {
 		try {
@@ -49,9 +53,19 @@
 		<h2>My cats</h2>
 		<div class="cats">
 			{#each cats as saved (saved.id)}
-				<a class="card" href="/design?id={saved.id}">
+				{@const care = advanceCare(saved.care, now).care}
+				<a class="card" href="/cat?id={saved.id}">
 					<span class="pic"><CatView cat={saved.cat} t={clock.t} /></span>
 					<span class="name">{saved.cat.name || 'My cat'}</span>
+					<span class="badges">
+						{#each needs(care) as need (need)}
+							<span title="Needs {need}">{NEED_ICONS[need]}</span>
+						{/each}
+						{#each care.messes as mess (mess.item)}
+							<span title="Made a mess">{mess.kind === 'poop' ? '💩' : '💦'}</span>
+						{/each}
+						{#if !needs(care).length && !care.messes.length}<span title="Happy">💕</span>{/if}
+					</span>
 				</a>
 			{/each}
 			<a class="card new" href="/design">
@@ -155,6 +169,12 @@
 	.name {
 		font-size: 1.4rem;
 		font-weight: 700;
+	}
+	.badges {
+		display: flex;
+		gap: 4px;
+		font-size: 1.4rem;
+		min-height: 1.8rem;
 	}
 	.new {
 		justify-content: center;

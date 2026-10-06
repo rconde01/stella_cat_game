@@ -20,6 +20,47 @@ export interface AnimState {
 	lookY: number;
 }
 
+/** Something the cat is doing right now (on its care page), on top of its mood. */
+export type CatAction = 'eating' | 'purring' | 'hissing' | null;
+
+/**
+ * Adjust the mood's animation for an action, and point the eyes at `look` (pupil offset in head
+ * units) if given.
+ */
+export function react(
+	anim: AnimState,
+	action: CatAction,
+	look: { x: number; y: number } | null
+): AnimState {
+	const t = anim.t;
+	const looked = look ? { ...anim, lookX: look.x, lookY: look.y } : anim;
+	switch (action) {
+		case 'eating':
+			return { ...looked, headTilt: 4 * Math.sin(t * 7), lookY: 0.06 };
+		case 'purring':
+			return {
+				...looked,
+				tailSwing: 0.15 * Math.sin(t * 1.2),
+				headTilt: 6,
+				earLeft: 0,
+				earRight: 0
+			};
+		case 'hissing':
+			// Ears flat, tail bristling.
+			return {
+				...looked,
+				earLeft: 45,
+				earRight: 45,
+				tailSwing: 0.2 * Math.sin(t * 25),
+				headTilt: 0,
+				blinkLeft: 0,
+				blinkRight: 0
+			};
+		default:
+			return looked;
+	}
+}
+
 /** A short bump (0 → 1 → 0) lasting `dur` seconds, repeating every `period` seconds. */
 function pulse(t: number, period: number, dur: number, offset = 0): number {
 	const p = (((t + offset) % period) + period) % period;

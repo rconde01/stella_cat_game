@@ -7,9 +7,11 @@ export const GET: RequestHandler = async ({ locals }) => {
 	return json(await listCats(locals.user.id));
 };
 
+/** Body: { cat, care? } */
 export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!locals.user) error(401, 'Not logged in');
-	const saved = await createCat(locals.user.id, await request.json());
+	const body = await request.json();
+	const saved = await createCat(locals.user.id, body ?? {});
 	if (!saved) error(409, `You can have up to ${MAX_CATS_PER_USER} cats`);
 	return json(saved, { status: 201 });
 };

@@ -5,7 +5,7 @@
 	import Eyewear from '../accessories/Eyewear.svelte';
 	import HeadGear from '../accessories/HeadGear.svelte';
 	import Smores, { type SmorePiece } from '../accessories/Smores.svelte';
-	import type { AnimState } from '../animation';
+	import type { AnimState, CatAction } from '../animation';
 	import type { Costume } from '../costume';
 	import type { Head } from '../geometry';
 	import { patternPath } from '../patterns';
@@ -25,6 +25,7 @@
 		irisFill: string;
 		accessories: Accessory[];
 		costume: Costume | null;
+		action?: CatAction;
 		filter?: string;
 	}
 
@@ -39,6 +40,7 @@
 		irisFill,
 		accessories,
 		costume,
+		action = null,
 		filter
 	}: Props = $props();
 
@@ -100,7 +102,7 @@
 		</g>
 	</g>
 	<g transform="scale({head.s})">
-		<Face {uid} {disposition} {irisFill} {anim} />
+		<Face {uid} {disposition} {irisFill} {anim} {action} />
 		{#if accessories.includes('smores')}
 			<Smores pieces={SMORES} size={22 / head.s} />
 		{/if}

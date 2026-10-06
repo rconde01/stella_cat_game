@@ -17,9 +17,23 @@
 		lookY: number;
 		lid: 'none' | 'angry';
 		wink?: boolean;
+		/** Blissful closed eyes, curved like ^ ^ (purring). */
+		happyClosed?: boolean;
 	}
 
-	let { clipId, x, y, side, irisFill, blink, lookX, lookY, lid, wink = false }: Props = $props();
+	let {
+		clipId,
+		x,
+		y,
+		side,
+		irisFill,
+		blink,
+		lookX,
+		lookY,
+		lid,
+		wink = false,
+		happyClosed = false
+	}: Props = $props();
 
 	const open = $derived(1 - blink);
 	// Mirror the look direction so both eyes look the same way on screen.
@@ -38,7 +52,13 @@
 	stroke-linejoin="round"
 	fill="none"
 >
-	{#if wink}
+	{#if happyClosed}
+		<path
+			d="M -0.24 0.06 Q 0 -0.24 0.24 0.06"
+			stroke-width="5"
+			vector-effect="non-scaling-stroke"
+		/>
+	{:else if wink}
 		<path
 			d="M 0.2 -0.17 L -0.14 0 L 0.2 0.17"
 			stroke-width="5"
