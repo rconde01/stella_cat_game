@@ -137,6 +137,39 @@ unit-tested in `care.test.ts`).
   then. My cats shows badges per cat (🐟🪶🪮 needs, 💩💦 messes, 💕 all good).
 - Care is saved separately from the cat's look (`SavedCat.care`; `PATCH /api/cats/:id` with `{ care }`).
 
+## Feature: Training & battles
+
+Rules in `lib/game/` (pure, unit-tested in `game.test.ts`): `progress.ts` (traits, XP, levels),
+`battle.ts` (`fight`). Pages: `/train?id=` and `/battle?id=`, linked from the cat's page.
+
+**Four traits, each with a training mini-game** (`lib/game/games/`, ~15–20s each, tap/touch friendly,
+no way to "fail" — every game gives some XP):
+
+| Trait       | Game            | How it works                                                         |
+| ----------- | --------------- | -------------------------------------------------------------------- |
+| 🏃 Speed    | **Mouse Chase** | Tap the scurrying mouse; it speeds up after every catch.             |
+| 💪 Strength | **Tug of War**  | Tap PULL fast to drag the rope away from a giant toy fish.           |
+| 🤸 Agility  | **Hop Hop Hop** | Tap to jump yarn balls, cucumbers and shoes. Bumps just don't count. |
+| 🧠 Smarts   | **Copycat**     | Simon-says with 🐟🧶🐭🥛 pads; the pattern grows each round.         |
+
+- XP = 15 + 60% of the game score (0–100). Level _n_ → _n_+1 needs 40 + 20·_n_ XP; max level 20.
+  The cat's overall level = 1 + all trait levels gained.
+- Training costs 8 food and gives +10 play; a cat below 15 food is too hungry to train.
+
+**Battles**: "Find an opponent!" picks a random cat from **another player** (any cat for guests); if
+there is none, a made-up **wild cat** near your level. Three rounds, each a different random trait;
+each cat's power = 2 × trait level + a roll of 1–8 (ties re-roll); best of three wins. So training
+matters (a +2-level cat wins ~80–95%) but luck keeps it exciting. Each round shows the winner's move
+(Zoomies Dash, Mighty Paw, Backflip Dodge, Sneaky Trick).
+
+- **Winner**: dances, does two backflips, wears a **gold medal** (`CatView` `medal` prop), fanfare.
+- **Loser**: cartoon waterfall tears (`action="crying"`), "wah-wah", then an encouraging message.
+- **Records** (🏆 wins – losses) show under each cat in the arena, on the cat's page and on My cats.
+- Logged-in battles are decided on the server (`battleForUser`), which updates **both** cats' records;
+  the opponent's owner is never shown. Guest battles are decided on the server too, but only the
+  guest's own record (in their browser) changes.
+- Not cheat-proof: a player could PATCH their own `progress`. Fine for a family game.
+
 ## Sound & music
 
 All synthesized with the Web Audio API in `lib/audio/` — no audio files:
@@ -352,21 +385,20 @@ A running record of how this project was set up, in order.
    are now listed oldest-first. API update changed from `PUT` to `PATCH { cat?, care? }`.
 4. Added Vitest (`npm test`) with unit tests for the care rules; checked the page in a real browser.
 
-### Pending — connect the Turso database in Vercel (needs Rob's login, one-time)
+### 2026-10-06 — Turso connected in Vercel (accounts live)
 
-Until this is done, the live site runs with accounts switched off (guest play only).
+Rob added Turso through the Vercel dashboard (**Storage** → Marketplace → **Turso**, connected to the
+project), checked that `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` exist under **Settings → Environment
+Variables**, and redeployed (Deployments → ⋯ → Redeploy). The live login page now offers "Make your
+account". New columns (`care`, `progress`) are added to the live database automatically on first use.
 
-1. Vercel dashboard → the `stella-cat-game` project → **Storage** tab → **Create Database** /
-   Marketplace → **Turso** → create a database (free plan) and connect it to this project for
-   Production (and Preview, if wanted).
-2. Check **Settings → Environment Variables**: there must be `TURSO_DATABASE_URL` (starts with
-   `libsql://`) and `TURSO_AUTH_TOKEN`. If the integration used different names, add these two names
-   with the same values.
-3. Redeploy (Deployments → ⋯ → Redeploy, or push any commit). "👤 Log in" appears top-right when it's
-   working.
+### 2026-10-06 — Training & battles
 
-(Alternative without the Marketplace: sign up at turso.tech, create a database, create a token, and
-add the two variables by hand.)
+1. Added four training mini-games (`/train`), XP and levels per trait, and battles (`/battle`) against
+   random cats from other players (or a wild cat), with win/loss records on every cat.
+2. Saved cats gained a `progress` part (new `progress` column). New `POST /api/battle`.
+3. Unit tests for levels and battle odds; real-browser run of all four games, a guest battle, and two
+   logged-in players battling (both records updated).
 
 ## Ideas backlog
 
@@ -374,6 +406,6 @@ _(Fill in with Stella!)_
 
 - More shapes / poses / patterns / moods / accessories / backgrounds (each is a small, contained
   addition — see "How the cat is drawn").
-- What does the cat _do_ in the game once it's designed?
-- Show other players' cats (a "cat park")?
+- More training games, special battle moves, or a tournament.
+- Show other players' cats (a "cat park"), or pick who to battle.
 - Password reset (needs a grown-up's email) and login rate-limiting.

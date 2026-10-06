@@ -37,6 +37,8 @@
 		action?: CatAction;
 		/** A point in the 400×400 scene for the cat to look at (e.g. a toy). */
 		lookAt?: { x: number; y: number } | null;
+		/** A gold medal on the chest (after winning a battle). */
+		medal?: boolean;
 	}
 
 	let {
@@ -46,7 +48,8 @@
 		scenery = true,
 		expression = null,
 		action = null,
-		lookAt = null
+		lookAt = null,
+		medal = false
 	}: Props = $props();
 
 	const uid = $props.id();
@@ -217,6 +220,36 @@
 
 		{#if cat.accessories.includes('smores')}
 			<Smores pieces={bodySmores} size={22} />
+		{/if}
+
+		{#if medal}
+			{@const m = {
+				x: layout.head.x,
+				y: layout.head.y + layout.head.s * 1.12,
+				r: layout.head.s * 0.2
+			}}
+			<g stroke="#3b2a40" stroke-width="2.5" stroke-linejoin="round">
+				<path
+					d="M {m.x - m.r * 1.3} {m.y - m.r * 3} L {m.x - m.r * 0.2} {m.y} L {m.x +
+						m.r * 0.4} {m.y - m.r * 0.3} L {m.x - m.r * 0.5} {m.y - m.r * 3} Z"
+					fill="#4dabf7"
+				/>
+				<path
+					d="M {m.x + m.r * 1.3} {m.y - m.r * 3} L {m.x + m.r * 0.2} {m.y} L {m.x -
+						m.r * 0.4} {m.y - m.r * 0.3} L {m.x + m.r * 0.5} {m.y - m.r * 3} Z"
+					fill="#ff6b6b"
+				/>
+				<circle cx={m.x} cy={m.y + m.r * 0.6} r={m.r} fill="#ffd43b" />
+				<circle cx={m.x} cy={m.y + m.r * 0.6} r={m.r * 0.7} fill="#ffe680" stroke-width="1.5" />
+				<path
+					d="M {m.x} {m.y + m.r * 0.15} l {m.r * 0.13} {m.r * 0.28} l {m.r * 0.3} {m.r *
+						0.03} l -{m.r * 0.23} {m.r * 0.2} l {m.r * 0.08} {m.r * 0.3} l -{m.r * 0.28} -{m.r *
+						0.16} l -{m.r * 0.28} {m.r * 0.16} l {m.r * 0.08} -{m.r * 0.3} l -{m.r * 0.23} -{m.r *
+						0.2} l {m.r * 0.3} -{m.r * 0.03} Z"
+					fill="#f08c00"
+					stroke-width="1"
+				/>
+			</g>
 		{/if}
 
 		<Head

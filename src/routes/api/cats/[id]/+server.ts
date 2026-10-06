@@ -2,11 +2,12 @@ import { error } from '@sveltejs/kit';
 import { deleteCat, updateCat } from '#lib/server/cats.ts';
 import type { RequestHandler } from './$types';
 
-/** Body: { cat?, care? } — only the given parts change. */
+/** Body: { cat?, care?, progress? } — only the given parts change. */
 export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user) error(401, 'Not logged in');
 	const body = (await request.json()) ?? {};
-	if (!(await updateCat(locals.user.id, params.id, { cat: body.cat, care: body.care }))) {
+	const patch = { cat: body.cat, care: body.care, progress: body.progress };
+	if (!(await updateCat(locals.user.id, params.id, patch))) {
 		error(404, 'Cat not found');
 	}
 	return new Response(null, { status: 204 });

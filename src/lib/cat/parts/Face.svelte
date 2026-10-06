@@ -19,7 +19,12 @@
 	let { uid, disposition, irisFill, anim, action = null }: Props = $props();
 
 	const t = $derived(anim.t);
-	const angry = $derived(disposition === 'grumpy' || action === 'hissing');
+	const angry = $derived(
+		action === 'hissing' ||
+			(disposition === 'grumpy' && action !== 'crying' && action !== 'celebrating')
+	);
+	const squeezed = $derived(action === 'crying');
+	const blissful = $derived(action === 'purring' || action === 'celebrating');
 	const lid = $derived(angry ? 'angry' : 'none');
 	const chomp = $derived(Math.sin(t * 14) > 0);
 	const blush = $derived(
@@ -87,8 +92,8 @@
 		lookX={anim.lookX}
 		lookY={anim.lookY}
 		{lid}
-		wink={disposition === 'silly' && !action}
-		happyClosed={action === 'purring'}
+		wink={(disposition === 'silly' && !action) || squeezed}
+		happyClosed={blissful}
 	/>
 	<Eye
 		clipId="{uid}-eye-r"
@@ -100,8 +105,24 @@
 		lookX={anim.lookX}
 		lookY={anim.lookY}
 		{lid}
-		happyClosed={action === 'purring'}
+		wink={squeezed}
+		happyClosed={blissful}
 	/>
+
+	{#if squeezed}
+		<!-- waterfall tears -->
+		{#each [-1, 1] as side (side)}
+			<path
+				d="M {side * 0.32} 0.14 Q {side * 0.38} 0.65 {side * 0.55} 1.3"
+				stroke="#7cc8ff"
+				stroke-width="10"
+				stroke-dasharray="8 5"
+				stroke-dashoffset={-t * 60}
+				opacity="0.85"
+				{...ln}
+			/>
+		{/each}
+	{/if}
 
 	{#if angry}
 		<g stroke-width="6">
@@ -134,6 +155,15 @@
 			/>
 			<path d="M -0.13 0.47 L -0.1 0.57 L -0.07 0.47 Z" fill="white" stroke-width="1.5" {...ln} />
 			<path d="M 0.13 0.47 L 0.1 0.57 L 0.07 0.47 Z" fill="white" stroke-width="1.5" {...ln} />
+		{:else if action === 'crying'}
+			<path d="M -0.17 0.62 Q 0 0.4 0.17 0.62 Q 0 0.68 -0.17 0.62 Z" fill={MOUTH} {...ln} />
+		{:else if action === 'celebrating'}
+			<path
+				d="M -0.17 0.46 Q 0 0.48 0.17 0.46 Q 0.13 0.72 0 0.72 Q -0.13 0.72 -0.17 0.46 Z"
+				fill={MOUTH}
+				{...ln}
+			/>
+			<path d="M -0.08 0.66 Q 0 0.58 0.08 0.66" fill={TONGUE} stroke="none" />
 		{:else if action === 'purring'}
 			<path d="M -0.2 0.43 Q -0.1 0.57 0 0.45 Q 0.1 0.57 0.2 0.43" {...ln} />
 		{:else if disposition === 'happy'}

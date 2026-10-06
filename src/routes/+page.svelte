@@ -5,6 +5,7 @@
 	import { DEFAULT_CAT } from '#lib/cat/options.ts';
 	import { catStoreFor, moveGuestCatsToAccount, type SavedCat } from '#lib/cat/store.ts';
 	import { advanceCare, needs, type Need } from '#lib/care/care.ts';
+	import { catLevel } from '#lib/game/progress.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -57,6 +58,9 @@
 				<a class="card" href="/cat?id={saved.id}">
 					<span class="pic"><CatView cat={saved.cat} t={clock.t} /></span>
 					<span class="name">{saved.cat.name || 'My cat'}</span>
+					<span class="record">
+						Lv {catLevel(saved.progress)} · 🏆 {saved.progress.wins}–{saved.progress.losses}
+					</span>
 					<span class="badges">
 						{#each needs(care) as need (need)}
 							<span title="Needs {need}">{NEED_ICONS[need]}</span>
@@ -169,6 +173,10 @@
 	.name {
 		font-size: 1.4rem;
 		font-weight: 700;
+	}
+	.record {
+		font-weight: 600;
+		opacity: 0.8;
 	}
 	.badges {
 		display: flex;

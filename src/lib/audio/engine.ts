@@ -291,3 +291,80 @@ export function trickle(): void {
 	src.stop(t + 1.6);
 	lfo.stop(t + 1.6);
 }
+
+/** Mouse squeak (caught one!). */
+export function squeak(): void {
+	if (!ctx) return;
+	const t = ctx.currentTime + 0.01;
+	tone('sine', 1800, 2600, t, 0.08, 0.2);
+	tone('sine', 2200, 3000, t + 0.09, 0.07, 0.15);
+}
+
+/** Springy jump. */
+export function boing(): void {
+	if (!ctx) return;
+	tone('triangle', 220, 660, ctx.currentTime + 0.01, 0.25, 0.3);
+}
+
+/** A tug on the rope. */
+export function tug(): void {
+	if (!ctx) return;
+	tone('square', 160, 110, ctx.currentTime + 0.01, 0.06, 0.08);
+}
+
+/** Bump into an obstacle. */
+export function bonk(): void {
+	if (!ctx) return;
+	tone('sine', 300, 120, ctx.currentTime + 0.01, 0.15, 0.3);
+}
+
+/** The four Copycat notes (C E G C). */
+export function note(index: number, dur = 0.35): void {
+	if (!ctx) return;
+	const f = [523, 659, 784, 1047][index] ?? 523;
+	tone('triangle', f, f, ctx.currentTime + 0.01, dur, 0.3);
+}
+
+/** Ta-da! */
+export function levelUp(): void {
+	if (!ctx) return;
+	const t = ctx.currentTime + 0.01;
+	[523, 659, 784, 1047, 1319].forEach((f, i) => tone('square', f, f, t + i * 0.09, 0.2, 0.08));
+	tone('triangle', 1047, 1047, t + 0.5, 0.6, 0.25);
+}
+
+/** A swipe and a thump, for a battle round. */
+export function whoosh(): void {
+	if (!ctx) return;
+	const t = ctx.currentTime + 0.01;
+	const src = noise(ctx);
+	const bp = ctx.createBiquadFilter();
+	bp.type = 'bandpass';
+	bp.Q.value = 2;
+	bp.frequency.setValueAtTime(400, t);
+	bp.frequency.exponentialRampToValueAtTime(3000, t + 0.2);
+	const env = envelope(ctx, t, 0.3, 0.05, 0.05, 0.12);
+	src.connect(bp).connect(env).connect(sfxBus);
+	src.start(t);
+	src.stop(t + 0.3);
+	tone('sine', 160, 50, t + 0.2, 0.18, 0.5);
+}
+
+/** Victory fanfare. */
+export function cheer(): void {
+	if (!ctx) return;
+	const t = ctx.currentTime + 0.01;
+	const tune = [523, 523, 523, 659, 784, 659, 784, 1047];
+	const times = [0, 0.12, 0.24, 0.36, 0.6, 0.78, 0.9, 1.05];
+	tune.forEach((f, i) =>
+		tone('square', f, f, t + times[i], i === tune.length - 1 ? 0.6 : 0.14, 0.09)
+	);
+}
+
+/** "Wah wah wah waaah" — sad but silly. */
+export function sadTrombone(): void {
+	if (!ctx) return;
+	const t = ctx.currentTime + 0.01;
+	[392, 370, 349].forEach((f, i) => tone('sawtooth', f, f * 0.97, t + i * 0.4, 0.35, 0.08));
+	tone('sawtooth', 330, 300, t + 1.2, 1.0, 0.08);
+}

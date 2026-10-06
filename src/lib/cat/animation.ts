@@ -21,7 +21,7 @@ export interface AnimState {
 }
 
 /** Something the cat is doing right now (on its care page), on top of its mood. */
-export type CatAction = 'eating' | 'purring' | 'hissing' | null;
+export type CatAction = 'eating' | 'purring' | 'hissing' | 'crying' | 'celebrating' | null;
 
 /**
  * Adjust the mood's animation for an action, and point the eyes at `look` (pupil offset in head
@@ -55,6 +55,25 @@ export function react(
 				headTilt: 0,
 				blinkLeft: 0,
 				blinkRight: 0
+			};
+		case 'crying':
+			// Droopy ears, sobbing little head shakes.
+			return {
+				...looked,
+				earLeft: 35,
+				earRight: 35,
+				headTilt: -5 + 2.5 * Math.sin(t * 14),
+				tailSwing: 0.05 * Math.sin(t),
+				blinkLeft: 0,
+				blinkRight: 0
+			};
+		case 'celebrating':
+			return {
+				...looked,
+				headTilt: 10 * Math.sin(t * 6),
+				tailSwing: 0.5 * Math.sin(t * 6),
+				earLeft: 0,
+				earRight: 0
 			};
 		default:
 			return looked;

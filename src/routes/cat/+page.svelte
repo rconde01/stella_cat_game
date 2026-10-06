@@ -23,6 +23,7 @@
 	import { useClock } from '#lib/cat/clock.svelte.ts';
 	import { layoutCat } from '#lib/cat/geometry.ts';
 	import { catStoreFor, type SavedCat } from '#lib/cat/store.ts';
+	import { catLevel } from '#lib/game/progress.ts';
 	import { page } from '$app/state';
 	import type { PageProps } from './$types';
 
@@ -346,6 +347,9 @@
 		<div class="room">
 			<section class="stage-card">
 				<div class="name-banner">{name}</div>
+				<p class="record">
+					Level {catLevel(saved!.progress)} · 🏆 {saved!.progress.wins} – {saved!.progress.losses}
+				</p>
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
 					class="stage"
@@ -528,6 +532,11 @@
 					{:else}Tap or stroke {name} to pet. Not too much!{/if}
 				</p>
 
+				<div class="games">
+					<a class="game-btn" href="/train?id={saved!.id}">🏋️ Train</a>
+					<a class="game-btn battle" href="/battle?id={saved!.id}">⚔️ Battle</a>
+				</div>
+
 				<h2>Your favorite stuff</h2>
 				<div class="stuff">
 					{#each STUFF as item (item)}
@@ -603,6 +612,32 @@
 		border-radius: 999px;
 		background: #fff;
 		border: 4px solid #ffd1e6;
+	}
+	.record {
+		margin: 0;
+		font-size: 1.2rem;
+		font-weight: 700;
+	}
+	.games {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 10px;
+		margin-top: 8px;
+	}
+	.game-btn {
+		text-align: center;
+		font-size: 1.5rem;
+		font-weight: 700;
+		padding: 12px;
+		border-radius: 999px;
+		background: #9775fa;
+		color: white;
+		text-decoration: none;
+		box-shadow: 0 4px 0 #7048e8;
+	}
+	.game-btn.battle {
+		background: var(--accent);
+		box-shadow: 0 4px 0 var(--accent-dark);
 	}
 	.stage {
 		position: relative;

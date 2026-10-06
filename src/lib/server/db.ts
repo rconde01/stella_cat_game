@@ -29,6 +29,7 @@ const SCHEMA = [
 		user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 		data TEXT NOT NULL,
 		care TEXT,
+		progress TEXT,
 		created_at INTEGER NOT NULL,
 		updated_at INTEGER NOT NULL
 	)`,
@@ -36,7 +37,10 @@ const SCHEMA = [
 ];
 
 /** Columns added after a table was first created (SQLite has no ADD COLUMN IF NOT EXISTS). */
-const ADDED_COLUMNS = [{ table: 'cats', column: 'care', type: 'TEXT' }];
+const ADDED_COLUMNS = [
+	{ table: 'cats', column: 'care', type: 'TEXT' },
+	{ table: 'cats', column: 'progress', type: 'TEXT' }
+];
 
 async function createSchema(c: Client): Promise<void> {
 	await c.batch(SCHEMA, 'write');

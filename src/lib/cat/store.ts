@@ -1,4 +1,5 @@
 import { sanitizeCare, type Care } from '../care/care';
+import { sanitizeProgress, type Progress } from '../game/progress';
 import { sanitizeCat } from './sanitize';
 import type { Cat } from './types';
 
@@ -6,26 +7,29 @@ import type { Cat } from './types';
  * Where a player's cats are kept. Logged-in players use the server (their account); guests use this
  * browser's localStorage. The UI only talks to the CatStore interface.
  *
- * A saved cat has two independent parts: `cat` (how it looks, edited in the designer) and `care`
- * (food / play / brushing, edited on the cat's page), so the two pages never overwrite each other.
+ * A saved cat has independent parts: `cat` (how it looks, edited in the designer), `care` (food /
+ * play / brushing, on the cat's page) and `progress` (training levels and battle record), so the
+ * pages never overwrite each other.
  */
 
 export interface SavedCat {
 	id: string;
 	cat: Cat;
 	care: Care;
+	progress: Progress;
 	createdAt: number;
 }
 
 export interface CatPatch {
 	cat?: Cat;
 	care?: Care;
+	progress?: Progress;
 }
 
 export interface CatStore {
 	/** Oldest first, so cats stay in the same order. */
 	list(): Promise<SavedCat[]>;
-	create(cat: Cat, care?: Care): Promise<SavedCat>;
+	create(cat: Cat, extras?: Omit<CatPatch, 'cat'>): Promise<SavedCat>;
 	update(id: string, patch: CatPatch): Promise<void>;
 	remove(id: string): Promise<void>;
 }
@@ -43,6 +47,7 @@ function readLocal(): SavedCat[] {
 				id: crypto.randomUUID(),
 				cat: sanitizeCat(JSON.parse(old)),
 				care: sanitizeCare(null, now),
+				progress: sanitizeProgress(null),
 				createdAt: now
 			};
 			writeLocal([migrated, ...readLocalRaw()]);
@@ -62,6 +67,7 @@ function readLocalRaw(): SavedCat[] {
 		id: String(s.id),
 		cat: sanitizeCat(s.cat),
 		care: sanitizeCare(s.care, now),
+		progress: sanitizeProgress(s.progress),
 		createdAt: Number(s.createdAt ?? s.updatedAt) || 0
 	}));
 }
@@ -78,12 +84,13 @@ export const localCatStore: CatStore & { clear(): void } = {
 	async list() {
 		return readLocal().sort((a, b) => a.createdAt - b.createdAt);
 	},
-	async create(cat, care) {
+	async create(cat, extras) {
 		const now = Date.now();
 		const saved: SavedCat = {
 			id: crypto.randomUUID(),
 			cat,
-			care: care ?? sanitizeCare(null, now),
+			care: extras?.care ?? sanitizeCare(null, now),
+			progress: extras?.progress ?? sanitizeProgress(null),
 			createdAt: now
 		};
 		writeLocal([...readLocal(), saved]);
@@ -111,8 +118,8 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const accountCatStore: CatStore = {
 	list: () => api<SavedCat[]>('/api/cats'),
-	create: (cat, care) =>
-		api<SavedCat>('/api/cats', { method: 'POST', body: JSON.stringify({ cat, care }) }),
+	create: (cat, extras) =>
+		api<SavedCat>('/api/cats', { method: 'POST', body: JSON.stringify({ cat, ...extras }) }),
 	update: (id, patch) =>
 		api<void>(`/api/cats/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
 	remove: (id) => api<void>(`/api/cats/${id}`, { method: 'DELETE' })
@@ -129,7 +136,7 @@ export function catStoreFor(user: { id: string } | null): CatStore {
 export async function moveGuestCatsToAccount(): Promise<number> {
 	const guestCats = await localCatStore.list();
 	for (const saved of guestCats) {
-		await accountCatStore.create(saved.cat, saved.care);
+		await accountCatStore.create(saved.cat, { care: saved.care, progress: saved.progress });
 	}
 	localCatStore.clear();
 	return guestCats.length;
