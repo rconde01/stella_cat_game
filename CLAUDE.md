@@ -128,6 +128,10 @@ unit-tested in `care.test.ts`).
   by the minute it happened, so every page and every catch-up agrees.
 - **Feed**: a bowl appears and the cat munches (+35). Feeding a full cat annoys it.
 - **Play**: wave a feather wand over the stage; the cat's eyes follow it; moving fills the meter.
+- **Laser**: a red dot follows the pointer; the cat (shrunk to 75% so it fits the stage) turns to face
+  it, runs after it in the side-on standing pose, crouches/wiggles (stretching pose) and pounces.
+  Running and pouncing fill the play meter. Uses `CatView`'s `offset` prop to move/flip/scale the cat
+  without moving the background; the chase runs every frame via `onFrame`.
 - **Brush**: rub the brush over the cat; sparkles and fur tufts fly and it purrs. Brushing an already
   shiny cat annoys it.
 - **Pet** (default): tap or stroke. Happy → purrs (^^ eyes, hearts); needy → meows.
@@ -147,7 +151,7 @@ no way to "fail" — every game gives some XP):
 
 | Trait       | Game            | How it works                                                         |
 | ----------- | --------------- | -------------------------------------------------------------------- |
-| 🏃 Speed    | **Mouse Chase** | Tap the scurrying mouse; it speeds up after every catch.             |
+| 🏃 Speed    | **Mouse Chase** | Tap the scurrying mouse (cursor is a big cat paw); it speeds up.     |
 | 💪 Strength | **Tug of War**  | Tap PULL fast to drag the rope away from a giant toy fish.           |
 | 🤸 Agility  | **Hop Hop Hop** | Tap to jump yarn balls, cucumbers and shoes. Bumps just don't count. |
 | 🧠 Smarts   | **Copycat**     | Simon-says with 🐟🧶🐭🥛 pads; the pattern grows each round.         |
@@ -399,6 +403,12 @@ account". New columns (`care`, `progress`) are added to the live database automa
 2. Saved cats gained a `progress` part (new `progress` column). New `POST /api/battle`.
 3. Unit tests for levels and battle odds; real-browser run of all four games, a guest battle, and two
    logged-in players battling (both records updated).
+
+### 2026-10-07 — Laser pointer, speed-game fixes
+
+1. Added the 🔴 Laser play mode (cat chases and pounces on the dot).
+2. Mouse Chase: the cursor is now a big pink cat paw (CSS data-URI cursor) because the normal pointer
+   was hard to see, and the watching cat shows its whole body (it was zoomed on its face).
 
 ## Ideas backlog
 

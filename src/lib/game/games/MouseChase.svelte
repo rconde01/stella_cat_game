@@ -104,7 +104,7 @@
 		{/each}
 	</svg>
 	<div class="watcher">
-		<CatView {cat} scenery={false} focus="face" lookAt={{ x: mouse.x, y: mouse.y }} />
+		<CatView {cat} scenery={false} focus="cat" lookAt={{ x: mouse.x, y: mouse.y }} />
 	</div>
 </div>
 
@@ -118,7 +118,11 @@
 		width: 100%;
 		border-radius: 20px;
 		touch-action: none;
-		cursor: crosshair;
+		/* A big cat paw is much easier to see than the normal pointer. Hotspot = middle of the pad. */
+		cursor:
+			url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg stroke='%233b2a40' stroke-width='3'%3E%3Cpath d='M28 50c-12 0-16-9-11-15 3-4 8-5 11-5s8 1 11 5c5 6 1 15-11 15z' fill='%23ffb3d1'/%3E%3Cellipse cx='11' cy='24' rx='5' ry='7' fill='%23ffb3d1'/%3E%3Cellipse cx='21' cy='13' rx='5' ry='7' fill='%23ffb3d1'/%3E%3Cellipse cx='35' cy='13' rx='5' ry='7' fill='%23ffb3d1'/%3E%3Cellipse cx='45' cy='24' rx='5' ry='7' fill='%23ffb3d1'/%3E%3C/g%3E%3C/svg%3E")
+				28 36,
+			pointer;
 	}
 	.hud {
 		display: flex;
@@ -131,7 +135,7 @@
 		position: absolute;
 		left: 8px;
 		bottom: 8px;
-		width: 22%;
+		width: 30%;
 		aspect-ratio: 1;
 		pointer-events: none;
 	}

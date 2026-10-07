@@ -39,6 +39,11 @@
 		lookAt?: { x: number; y: number } | null;
 		/** A gold medal on the chest (after winning a battle). */
 		medal?: boolean;
+		/**
+		 * Move the cat (not the background) around the scene: `x` sideways, `y` up off the ground,
+		 * `flip` to face the other way. Used when chasing the laser.
+		 */
+		offset?: { x: number; y: number; flip: boolean; scale?: number };
 	}
 
 	let {
@@ -49,7 +54,8 @@
 		expression = null,
 		action = null,
 		lookAt = null,
-		medal = false
+		medal = false,
+		offset = { x: 0, y: 0, flip: false }
 	}: Props = $props();
 
 	const uid = $props.id();
@@ -59,8 +65,14 @@
 	const look = $derived.by(() => {
 		if (!lookAt) return null;
 		const { x, y, s } = layout.head;
+		// Where the point is relative to the (moved, maybe flipped) cat.
+		const pivot = layout.shadow.cx;
+		const k = offset.scale ?? 1;
+		let lx = pivot + (lookAt.x - offset.x - pivot) / k;
+		if (offset.flip) lx = 2 * pivot - lx;
+		const ly = layout.ground + (lookAt.y + offset.y - layout.ground) / k;
 		const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
-		return { x: clamp((lookAt.x - x) / s / 6, 0.08), y: clamp((lookAt.y - y) / s / 6, 0.07) };
+		return { x: clamp((lx - x) / s / 6, 0.08), y: clamp((ly - y) / s / 6, 0.07) };
 	});
 	const anim = $derived(react(animate(mood, t), action, look));
 	const costume = $derived(costumeOf(cat.accessories));
@@ -174,98 +186,104 @@
 	{/if}
 
 	<ellipse
-		cx={layout.shadow.cx}
+		cx={layout.shadow.cx + offset.x}
 		cy={ground}
-		rx={layout.shadow.rx}
+		rx={layout.shadow.rx * (offset.scale ?? 1) * (1 - Math.min(offset.y, 150) / 300)}
 		ry="10"
 		fill="black"
 		opacity="0.12"
 	/>
 
-	<g transform="translate(0 {ground}) scale(1 {anim.breath}) translate(0 {-ground})">
-		<!-- Costumes are smooth metal, so they skip the fluffy filter. -->
-		<g filter={costume ? undefined : fluffy}>
-			<Limb
-				d={tailPath(layout.tail, anim.tailSwing)}
-				width={layout.tail.width}
-				fill={cat.color}
-				layers={tailLayers}
-			/>
-			{#each layout.backLegs as leg, i (i)}
+	<g
+		transform="translate({layout.shadow.cx + offset.x} {ground - offset.y}) scale({(offset.flip
+			? -1
+			: 1) * (offset.scale ?? 1)} {offset.scale ?? 1}) translate({-layout.shadow.cx} {-ground})"
+	>
+		<g transform="translate(0 {ground}) scale(1 {anim.breath}) translate(0 {-ground})">
+			<!-- Costumes are smooth metal, so they skip the fluffy filter. -->
+			<g filter={costume ? undefined : fluffy}>
 				<Limb
-					d={limbPath(leg)}
-					width={leg.width}
-					fill={shade(cat.color, -0.08)}
-					layers={legLayers}
-				/>
-			{/each}
-			{#each [layout.body, ...layout.haunches] as blob, i (i)}
-				<Part
-					id="{uid}-blob-{i}"
-					d={UNIT_PATHS[blob.path]}
-					transform={blobTransform(blob)}
+					d={tailPath(layout.tail, anim.tailSwing)}
+					width={layout.tail.width}
 					fill={cat.color}
-					markings={patternPath(cat.pattern, blob.path)}
-					{markingFill}
-				>
-					{#if costume}
-						<CostumeBody {uid} {costume} {blob} t={anim.t} />
-					{/if}
-				</Part>
-			{/each}
-			{#each layout.frontLegs as leg, i (i)}
-				<Limb d={limbPath(leg)} width={leg.width} fill={cat.color} layers={legLayers} />
-			{/each}
-		</g>
-
-		{#if cat.accessories.includes('smores')}
-			<Smores pieces={bodySmores} size={22} />
-		{/if}
-
-		{#if medal}
-			{@const m = {
-				x: layout.head.x,
-				y: layout.head.y + layout.head.s * 1.12,
-				r: layout.head.s * 0.2
-			}}
-			<g stroke="#3b2a40" stroke-width="2.5" stroke-linejoin="round">
-				<path
-					d="M {m.x - m.r * 1.3} {m.y - m.r * 3} L {m.x - m.r * 0.2} {m.y} L {m.x +
-						m.r * 0.4} {m.y - m.r * 0.3} L {m.x - m.r * 0.5} {m.y - m.r * 3} Z"
-					fill="#4dabf7"
+					layers={tailLayers}
 				/>
-				<path
-					d="M {m.x + m.r * 1.3} {m.y - m.r * 3} L {m.x + m.r * 0.2} {m.y} L {m.x -
-						m.r * 0.4} {m.y - m.r * 0.3} L {m.x + m.r * 0.5} {m.y - m.r * 3} Z"
-					fill="#ff6b6b"
-				/>
-				<circle cx={m.x} cy={m.y + m.r * 0.6} r={m.r} fill="#ffd43b" />
-				<circle cx={m.x} cy={m.y + m.r * 0.6} r={m.r * 0.7} fill="#ffe680" stroke-width="1.5" />
-				<path
-					d="M {m.x} {m.y + m.r * 0.15} l {m.r * 0.13} {m.r * 0.28} l {m.r * 0.3} {m.r *
-						0.03} l -{m.r * 0.23} {m.r * 0.2} l {m.r * 0.08} {m.r * 0.3} l -{m.r * 0.28} -{m.r *
-						0.16} l -{m.r * 0.28} {m.r * 0.16} l {m.r * 0.08} -{m.r * 0.3} l -{m.r * 0.23} -{m.r *
-						0.2} l {m.r * 0.3} -{m.r * 0.03} Z"
-					fill="#f08c00"
-					stroke-width="1"
-				/>
+				{#each layout.backLegs as leg, i (i)}
+					<Limb
+						d={limbPath(leg)}
+						width={leg.width}
+						fill={shade(cat.color, -0.08)}
+						layers={legLayers}
+					/>
+				{/each}
+				{#each [layout.body, ...layout.haunches] as blob, i (i)}
+					<Part
+						id="{uid}-blob-{i}"
+						d={UNIT_PATHS[blob.path]}
+						transform={blobTransform(blob)}
+						fill={cat.color}
+						markings={patternPath(cat.pattern, blob.path)}
+						{markingFill}
+					>
+						{#if costume}
+							<CostumeBody {uid} {costume} {blob} t={anim.t} />
+						{/if}
+					</Part>
+				{/each}
+				{#each layout.frontLegs as leg, i (i)}
+					<Limb d={limbPath(leg)} width={leg.width} fill={cat.color} layers={legLayers} />
+				{/each}
 			</g>
-		{/if}
 
-		<Head
-			{uid}
-			head={layout.head}
-			{anim}
-			coatFill={cat.color}
-			{markingFill}
-			pattern={cat.pattern}
-			disposition={mood}
-			{action}
-			irisFill="url(#{uid}-iris)"
-			accessories={cat.accessories}
-			{costume}
-			filter={fluffy}
-		/>
+			{#if cat.accessories.includes('smores')}
+				<Smores pieces={bodySmores} size={22} />
+			{/if}
+
+			{#if medal}
+				{@const m = {
+					x: layout.head.x,
+					y: layout.head.y + layout.head.s * 1.12,
+					r: layout.head.s * 0.2
+				}}
+				<g stroke="#3b2a40" stroke-width="2.5" stroke-linejoin="round">
+					<path
+						d="M {m.x - m.r * 1.3} {m.y - m.r * 3} L {m.x - m.r * 0.2} {m.y} L {m.x +
+							m.r * 0.4} {m.y - m.r * 0.3} L {m.x - m.r * 0.5} {m.y - m.r * 3} Z"
+						fill="#4dabf7"
+					/>
+					<path
+						d="M {m.x + m.r * 1.3} {m.y - m.r * 3} L {m.x + m.r * 0.2} {m.y} L {m.x -
+							m.r * 0.4} {m.y - m.r * 0.3} L {m.x + m.r * 0.5} {m.y - m.r * 3} Z"
+						fill="#ff6b6b"
+					/>
+					<circle cx={m.x} cy={m.y + m.r * 0.6} r={m.r} fill="#ffd43b" />
+					<circle cx={m.x} cy={m.y + m.r * 0.6} r={m.r * 0.7} fill="#ffe680" stroke-width="1.5" />
+					<path
+						d="M {m.x} {m.y + m.r * 0.15} l {m.r * 0.13} {m.r * 0.28} l {m.r * 0.3} {m.r *
+							0.03} l -{m.r * 0.23} {m.r * 0.2} l {m.r * 0.08} {m.r * 0.3} l -{m.r * 0.28} -{m.r *
+							0.16} l -{m.r * 0.28} {m.r * 0.16} l {m.r * 0.08} -{m.r * 0.3} l -{m.r * 0.23} -{m.r *
+							0.2} l {m.r * 0.3} -{m.r * 0.03} Z"
+						fill="#f08c00"
+						stroke-width="1"
+					/>
+				</g>
+			{/if}
+
+			<Head
+				{uid}
+				head={layout.head}
+				{anim}
+				coatFill={cat.color}
+				{markingFill}
+				pattern={cat.pattern}
+				disposition={mood}
+				{action}
+				irisFill="url(#{uid}-iris)"
+				accessories={cat.accessories}
+				{costume}
+				filter={fluffy}
+			/>
+		</g>
 	</g>
 </svg>
 

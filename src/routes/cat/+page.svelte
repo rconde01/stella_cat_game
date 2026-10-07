@@ -23,13 +23,14 @@
 	import { useClock } from '#lib/cat/clock.svelte.ts';
 	import { layoutCat } from '#lib/cat/geometry.ts';
 	import { catStoreFor, type SavedCat } from '#lib/cat/store.ts';
+	import { onFrame } from '#lib/game/loop.ts';
 	import { catLevel } from '#lib/game/progress.ts';
 	import { page } from '$app/state';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
-	type Tool = 'pet' | 'play' | 'brush';
+	type Tool = 'pet' | 'play' | 'laser' | 'brush';
 	interface Particle {
 		id: number;
 		kind: 'heart' | 'sparkle' | 'tuft';
@@ -321,8 +322,89 @@
 		pointer = null;
 	}
 
+	// ----- laser pointer: the cat runs after the dot and pounces on it -----
+
+	/** How far the cat's middle may run from the middle of the stage, and how small it gets while chasing. */
+	const CHASE_RANGE = 75;
+	const CHASE_SCALE = 0.75;
+	const atRest = () => ({
+		x: 0,
+		y: 0,
+		vy: 0,
+		flip: false,
+		scale: 1,
+		crouchUntil: 0,
+		nextPounce: 0,
+		pounce: false
+	});
+	let chase = $state(atRest());
+
+	$effect(() => {
+		if (tool !== 'laser') {
+			chase = atRest();
+			return;
+		}
+		return onFrame(laserStep);
+	});
+
+	function laserStep(dt: number) {
+		if (!layout || !care || action === 'hissing') return;
+		const c = chase;
+		// Offsets are from the pose's own spot; keep the cat's middle near the middle of the stage.
+		const pivot = layoutCat({ shape: cat!.shape, pose: 'standing' }).shadow.cx;
+		const home = 200 - pivot;
+		const target = pointer
+			? Math.max(home - CHASE_RANGE, Math.min(home + CHASE_RANGE, pointer.x - pivot))
+			: 0;
+		// Shrink a little while chasing so the whole cat fits on the stage.
+		const wantScale = pointer || Math.abs(c.x) > 2 ? CHASE_SCALE : 1;
+		c.scale += (wantScale - c.scale) * Math.min(1, dt * 6);
+		const dx = target - c.x;
+
+		if (c.y > 0 || c.vy > 0) {
+			// In the air: fly toward the dot, then land.
+			c.vy -= 1400 * dt;
+			c.y = Math.max(0, c.y + c.vy * dt);
+			c.x += Math.sign(dx) * Math.min(Math.abs(dx), 320 * dt);
+			if (c.y === 0) c.vy = 0;
+			return;
+		}
+		if (t < c.crouchUntil) return; // wiggling, about to pounce
+		if (c.pounce) {
+			c.pounce = false;
+			c.vy = 420 + Math.random() * 140;
+			c.y = 0.01;
+			sfx.boing();
+			if (pointer) spawn('sparkle', pointer.x, pointer.y);
+			if (care.fun < 100) {
+				setCare(addTo(care, 'play', 6));
+				if (care.fun >= 100) message = `${name} had so much fun! 🎉`;
+				else if (Math.random() < 0.3) message = `Pounce! ${name} almost got it!`;
+			}
+			return;
+		}
+		if (pointer && Math.abs(dx) < 45 && t > c.nextPounce && care.fun < 100) {
+			c.crouchUntil = t + 0.45;
+			c.nextPounce = t + 1.1 + Math.random() * 0.6;
+			c.pounce = true;
+			return;
+		}
+		// Run toward the dot (or stroll back home when it's gone).
+		const step = Math.sign(dx) * Math.min(Math.abs(dx), (pointer ? 240 : 90) * dt);
+		c.x += step;
+		// The side-on poses face left, so flip to run right.
+		if (Math.abs(dx) > 4) c.flip = dx > 0;
+		if (pointer && care.fun < 100) setCare(addTo(care, 'play', Math.abs(step) * 0.03));
+	}
+
+	/** While chasing, the cat switches to side-on poses: crouched before a pounce, standing otherwise. */
+	const chasePose = $derived.by(() => {
+		if (tool !== 'laser' || (!pointer && Math.abs(chase.x) < 2 && chase.y === 0)) return null;
+		return t < chase.crouchUntil ? ('stretching' as const) : ('standing' as const);
+	});
+	const shownCat = $derived(cat && chasePose ? { ...cat, pose: chasePose } : cat);
 	// The cat watches the toy.
-	const lookAt = $derived(tool === 'play' && pointer ? pointer : null);
+	const lookAt = $derived((tool === 'play' || tool === 'laser') && pointer ? pointer : null);
 	const hissExpression = $derived(action === 'hissing' ? ('grumpy' as const) : null);
 	const bowlFood = $derived(Math.max(0, Math.min(1, (feedingUntil - t) / 2.4)));
 
@@ -360,7 +442,14 @@
 					onpointerup={onPointerUp}
 					onpointerleave={onPointerLeave}
 				>
-					<CatView {cat} {t} {action} {lookAt} expression={hissExpression} />
+					<CatView
+						cat={shownCat!}
+						{t}
+						{action}
+						{lookAt}
+						expression={hissExpression}
+						offset={chase}
+					/>
 					<svg class="overlay" viewBox="0 0 400 400" aria-hidden="true">
 						{#if t < feedingUntil}
 							<g transform="translate({layout.head.x} 380)">
@@ -385,7 +474,7 @@
 							</g>
 						{/if}
 
-						{#if wants.length && !action}
+						{#if wants.length && !action && !chasePose}
 							{@const bx = Math.min(layout.head.x + layout.head.s * 1.25, 350)}
 							{@const by = Math.max(layout.head.y - layout.head.s * 1.45, 45)}
 							<g transform="translate({bx} {by + 3 * Math.sin(t * 3)})">
@@ -427,7 +516,17 @@
 							{/if}
 						{/each}
 
-						{#if pointer && tool === 'play'}
+						{#if pointer && tool === 'laser'}
+							<circle
+								cx={pointer.x}
+								cy={pointer.y}
+								r={14 + 3 * Math.sin(t * 20)}
+								fill="#ff2d2d"
+								opacity="0.3"
+							/>
+							<circle cx={pointer.x} cy={pointer.y} r="6" fill="#ff2d2d" />
+							<circle cx={pointer.x - 1.5} cy={pointer.y - 1.5} r="2" fill="#ffd0d0" />
+						{:else if pointer && tool === 'play'}
 							<!-- feather wand -->
 							<path
 								d="M 420 -20 Q {pointer.x + 60} {pointer.y - 120} {pointer.x} {pointer.y}"
@@ -519,6 +618,9 @@
 					<button class="tool" class:active={tool === 'play'} onclick={() => chooseTool('play')}>
 						<span class="tool-icon">🪶</span>Play
 					</button>
+					<button class="tool" class:active={tool === 'laser'} onclick={() => chooseTool('laser')}>
+						<span class="tool-icon">🔴</span>Laser
+					</button>
 					<button class="tool" class:active={tool === 'brush'} onclick={() => chooseTool('brush')}>
 						<span class="tool-icon">🪮</span>Brush
 					</button>
@@ -528,6 +630,7 @@
 				</div>
 				<p class="hint">
 					{#if tool === 'play'}Wave the feather around {name}!
+					{:else if tool === 'laser'}Move the laser dot and watch {name} chase it!
 					{:else if tool === 'brush'}Rub the brush over {name}'s fur!
 					{:else}Tap or stroke {name} to pet. Not too much!{/if}
 				</p>
@@ -696,7 +799,7 @@
 	}
 	.tools {
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
+		grid-template-columns: repeat(5, 1fr);
 		gap: 10px;
 		margin-top: 16px;
 	}
