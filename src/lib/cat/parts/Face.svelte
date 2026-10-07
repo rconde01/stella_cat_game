@@ -21,9 +21,10 @@
 	const t = $derived(anim.t);
 	const angry = $derived(
 		action === 'hissing' ||
-			(disposition === 'grumpy' && action !== 'crying' && action !== 'celebrating')
+			(disposition === 'grumpy' &&
+				!['crying', 'celebrating', 'hurt', 'dizzy'].includes(action ?? ''))
 	);
-	const squeezed = $derived(action === 'crying');
+	const squeezed = $derived(action === 'crying' || action === 'hurt');
 	const blissful = $derived(action === 'purring' || action === 'celebrating');
 	const lid = $derived(angry ? 'angry' : 'none');
 	const chomp = $derived(Math.sin(t * 14) > 0);
@@ -82,34 +83,47 @@
 	{/if}
 
 	<!-- eyes -->
-	<Eye
-		clipId="{uid}-eye-l"
-		x={-0.42}
-		y={0.02}
-		side={-1}
-		{irisFill}
-		blink={anim.blinkLeft}
-		lookX={anim.lookX}
-		lookY={anim.lookY}
-		{lid}
-		wink={(disposition === 'silly' && !action) || squeezed}
-		happyClosed={blissful}
-	/>
-	<Eye
-		clipId="{uid}-eye-r"
-		x={0.42}
-		y={0.02}
-		side={1}
-		{irisFill}
-		blink={anim.blinkRight}
-		lookX={anim.lookX}
-		lookY={anim.lookY}
-		{lid}
-		wink={squeezed}
-		happyClosed={blissful}
-	/>
+	{#if action === 'dizzy'}
+		<!-- swirly woozy eyes -->
+		{#each [-1, 1] as side (side)}
+			<g transform="translate({side * 0.42} 0.02) rotate({t * 360 * side})">
+				<path
+					d="M 0 0 m 0.02 0 a 0.02 0.02 0 1 1 -0.04 0 a 0.06 0.06 0 1 1 0.1 0 a 0.1 0.1 0 1 1 -0.17 0 a 0.15 0.15 0 1 1 0.25 0"
+					stroke-width="4"
+					{...ln}
+				/>
+			</g>
+		{/each}
+	{:else}
+		<Eye
+			clipId="{uid}-eye-l"
+			x={-0.42}
+			y={0.02}
+			side={-1}
+			{irisFill}
+			blink={anim.blinkLeft}
+			lookX={anim.lookX}
+			lookY={anim.lookY}
+			{lid}
+			wink={(disposition === 'silly' && !action) || squeezed}
+			happyClosed={blissful}
+		/>
+		<Eye
+			clipId="{uid}-eye-r"
+			x={0.42}
+			y={0.02}
+			side={1}
+			{irisFill}
+			blink={anim.blinkRight}
+			lookX={anim.lookX}
+			lookY={anim.lookY}
+			{lid}
+			wink={squeezed}
+			happyClosed={blissful}
+		/>
+	{/if}
 
-	{#if squeezed}
+	{#if action === 'crying'}
 		<!-- waterfall tears -->
 		{#each [-1, 1] as side (side)}
 			<path
@@ -155,6 +169,13 @@
 			/>
 			<path d="M -0.13 0.47 L -0.1 0.57 L -0.07 0.47 Z" fill="white" stroke-width="1.5" {...ln} />
 			<path d="M 0.13 0.47 L 0.1 0.57 L 0.07 0.47 Z" fill="white" stroke-width="1.5" {...ln} />
+		{:else if action === 'hurt'}
+			<ellipse cx="0" cy="0.56" rx="0.07" ry="0.08" fill={MOUTH} {...ln} />
+		{:else if action === 'dizzy'}
+			<path
+				d="M -0.15 0.54 Q -0.1 0.48 -0.05 0.54 Q 0 0.6 0.05 0.54 Q 0.1 0.48 0.15 0.54"
+				{...ln}
+			/>
 		{:else if action === 'crying'}
 			<path d="M -0.17 0.62 Q 0 0.4 0.17 0.62 Q 0 0.68 -0.17 0.62 Z" fill={MOUTH} {...ln} />
 		{:else if action === 'celebrating'}
@@ -185,7 +206,21 @@
 	</g>
 
 	<!-- mood extras (an action replaces them, except the anger mark when hissing) -->
-	{#if action && action !== 'hissing'}
+	{#if action === 'dizzy'}
+		<!-- stars circling the head -->
+		{#each [0, 1, 2] as i (i)}
+			{@const a = t * 3 + (i * Math.PI * 2) / 3}
+			<text
+				x={Math.cos(a) * 0.75}
+				y={-0.95 + Math.sin(a) * 0.18}
+				font-size="0.3"
+				text-anchor="middle"
+				fill="#ffd43b"
+				stroke="#e0a800"
+				stroke-width="0.02">★</text
+			>
+		{/each}
+	{:else if action && action !== 'hissing'}
 		<!-- none -->
 	{:else if angry}
 		<g

@@ -335,7 +335,9 @@
 		scale: 1,
 		crouchUntil: 0,
 		nextPounce: 0,
-		pounce: false
+		pounce: false,
+		/** Take-off speed for the next jump. */
+		leap: 0
 	});
 	let chase = $state(atRest());
 
@@ -351,7 +353,8 @@
 		if (!layout || !care || action === 'hissing') return;
 		const c = chase;
 		// Offsets are from the pose's own spot; keep the cat's middle near the middle of the stage.
-		const pivot = layoutCat({ shape: cat!.shape, pose: 'standing' }).shadow.cx;
+		const standing = layoutCat({ shape: cat!.shape, pose: 'standing' });
+		const pivot = standing.shadow.cx;
 		const home = 200 - pivot;
 		const target = pointer
 			? Math.max(home - CHASE_RANGE, Math.min(home + CHASE_RANGE, pointer.x - pivot))
@@ -372,7 +375,7 @@
 		if (t < c.crouchUntil) return; // wiggling, about to pounce
 		if (c.pounce) {
 			c.pounce = false;
-			c.vy = 420 + Math.random() * 140;
+			c.vy = c.leap;
 			c.y = 0.01;
 			sfx.boing();
 			if (pointer) spawn('sparkle', pointer.x, pointer.y);
@@ -383,9 +386,15 @@
 			}
 			return;
 		}
-		if (pointer && Math.abs(dx) < 45 && t > c.nextPounce && care.fun < 100) {
-			c.crouchUntil = t + 0.45;
-			c.nextPounce = t + 1.1 + Math.random() * 0.6;
+		// Is the dot above the cat's head? Then jump straight up for it, high enough to reach it.
+		const headTop =
+			standing.ground - (standing.ground - (standing.head.y - standing.head.s)) * c.scale;
+		const overhead = pointer !== null && pointer.y < headTop - 10;
+		if (pointer && Math.abs(dx) < (overhead ? 70 : 45) && t > c.nextPounce && care.fun < 100) {
+			c.crouchUntil = t + (overhead ? 0.2 : 0.45);
+			c.nextPounce = t + (overhead ? 0.6 : 1.1 + Math.random() * 0.6);
+			const rise = Math.min(headTop - pointer.y + 25, 280);
+			c.leap = overhead ? Math.sqrt(2 * 1400 * rise) : 420 + Math.random() * 140;
 			c.pounce = true;
 			return;
 		}

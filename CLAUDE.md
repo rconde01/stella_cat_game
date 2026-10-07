@@ -131,7 +131,8 @@ unit-tested in `care.test.ts`).
 - **Laser**: a red dot follows the pointer; the cat (shrunk to 75% so it fits the stage) turns to face
   it, runs after it in the side-on standing pose, crouches/wiggles (stretching pose) and pounces.
   Running and pouncing fill the play meter. Uses `CatView`'s `offset` prop to move/flip/scale the cat
-  without moving the background; the chase runs every frame via `onFrame`.
+  without moving the background; the chase runs every frame via `onFrame`. When the dot is **above the
+  cat's head**, it does a quick crouch and jumps straight up, high enough to reach it.
 - **Brush**: rub the brush over the cat; sparkles and fur tufts fly and it purrs. Brushing an already
   shiny cat annoys it.
 - **Pet** (default): tap or stroke. Happy → purrs (^^ eyes, hearts); needy → meows.
@@ -165,6 +166,23 @@ there is none, a made-up **wild cat** near your level. Three rounds, each a diff
 each cat's power = 2 × trait level + a roll of 1–8 (ties re-roll); best of three wins. So training
 matters (a +2-level cat wins ~80–95%) but luck keeps it exciting. Each round shows the winner's move
 (Zoomies Dash, Mighty Paw, Backflip Dodge, Sneaky Trick).
+
+**The fight (`/battle`, acted out on the client):** both cats stand side-on in one 800×400 arena
+(`lib/game/BattleScene.svelte`), chosen at random: 🏭 Warehouse, 🌾 Field, 🛁 Bathroom, ✈️ the wing of
+a Plane (clouds whoosh past), 🥋 Dojo (`?arena=dojo` forces one, for testing). Each cat has ❤️❤️❤️.
+In every round both cats use a move that fits the round's trait (`lib/game/moves.ts`): the round's
+loser goes first and **misses** (the other cat jumps out of the way, "MISSED!"), then the winner
+**lands** its move and the loser loses a heart.
+
+| Trait(s)             | Moves                                                                                                                                                                   |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 💪 Strength          | 🥋 Karate Chop (dash + slash marks), 🦶 Flying Kick (leaping kick)                                                                                                      |
+| 🏃 Speed, 🤸 Agility | 🦶 Flying Kick, 🐾 Sneaky Pounce (crouch, creep, big leap)                                                                                                              |
+| 🧠 Smarts            | 🥒 Cucumber Toss (target jumps in fright), 🌿 Catnip Cloud (target goes dizzy: spiral eyes, circling stars), 🦴 Fish Bone Fling, 🤢 Hairball Hack (cough, cough, throw) |
+
+Hits show a comic burst ("POW!", "CHOP!", "EEK!", "BONK!", "SPLAT!", "WOOZY!"), shake the arena,
+knock the target back and give it a squeezed "ouch" face (`action="hurt"`). The page moves the cats
+with `CatView`'s `offset` prop and small `tween()` helpers; ⏩ Skip jumps to the result.
 
 - **Winner**: dances, does two backflips, wears a **gold medal** (`CatView` `medal` prop), fanfare.
 - **Loser**: cartoon waterfall tears (`action="crying"`), "wah-wah", then an encouraging message.
@@ -409,6 +427,13 @@ account". New columns (`care`, `progress`) are added to the live database automa
 1. Added the 🔴 Laser play mode (cat chases and pounces on the dot).
 2. Mouse Chase: the cursor is now a big pink cat paw (CSS data-URI cursor) because the normal pointer
    was hard to see, and the watching cat shows its whole body (it was zoomed on its face).
+
+### 2026-10-07 — Battle rework
+
+1. Battles now happen in one shared arena (5 locations) with the cats actually fighting: karate chops,
+   flying kicks, sneaky pounces, and thrown cucumbers, catnip, fish bones and hairballs. Hearts, comic
+   hit bursts, dodges, screen shake, new `hurt` and `dizzy` faces, and a skip button.
+2. Laser: the cat jumps straight up when the dot is over its head.
 
 ## Ideas backlog
 

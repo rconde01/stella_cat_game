@@ -368,3 +368,25 @@ export function sadTrombone(): void {
 	[392, 370, 349].forEach((f, i) => tone('sawtooth', f, f * 0.97, t + i * 0.4, 0.35, 0.08));
 	tone('sawtooth', 330, 300, t + 1.2, 1.0, 0.08);
 }
+
+/** A cat coughing up a hairball: "hck… hck… HACK". */
+export function hack(): void {
+	if (!ctx) return;
+	const t = ctx.currentTime + 0.01;
+	[0, 0.25, 0.55].forEach((at, i) => {
+		const src = noise(ctx!);
+		const lp = ctx!.createBiquadFilter();
+		lp.type = 'bandpass';
+		lp.frequency.value = 700 + i * 200;
+		lp.Q.value = 1.2;
+		const env = envelope(ctx!, t + at, i === 2 ? 0.5 : 0.25, 0.01, 0.06, 0.12);
+		src.connect(lp).connect(env).connect(sfxBus);
+		src.start(t + at);
+		src.stop(t + at + 0.3);
+	});
+}
+
+/** A startled cat ("EEK!" at a cucumber). */
+export function eek(): void {
+	meow(1.8);
+}
