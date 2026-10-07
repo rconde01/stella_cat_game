@@ -14,7 +14,8 @@
 		limbPath,
 		tailPath,
 		UNIT_PATHS,
-		type Blob
+		type Blob,
+		type Limb as LimbSpec
 	} from './geometry';
 	import Head from './parts/Head.svelte';
 	import Limb, { type LimbLayer } from './parts/Limb.svelte';
@@ -43,7 +44,9 @@
 		 * Move the cat (not the background) around the scene: `x` sideways, `y` up off the ground,
 		 * `flip` to face the other way. Used when chasing the laser.
 		 */
-		offset?: { x: number; y: number; flip: boolean; scale?: number };
+		offset?: { x: number; y: number; flip: boolean; scale?: number; squash?: number };
+		/** Legs trot and the body bobs (side-on poses). */
+		running?: boolean;
 	}
 
 	let {
@@ -55,7 +58,8 @@
 		action = null,
 		lookAt = null,
 		medal = false,
-		offset = { x: 0, y: 0, flip: false }
+		offset = { x: 0, y: 0, flip: false },
+		running = false
 	}: Props = $props();
 
 	const uid = $props.id();
@@ -75,6 +79,39 @@
 		return { x: clamp((lx - x) / s / 6, 0.08), y: clamp((ly - y) / s / 6, 0.07) };
 	});
 	const anim = $derived(react(animate(mood, t), action, look));
+	/** The tail tip follows a moment behind the rest of the tail. */
+	const tipSwing = $derived(react(animate(mood, t - 0.25), action, look).tailSwing);
+
+	/** Swing a leg forward/back around its hip. */
+	function swingLeg(leg: LimbSpec, angle: number): LimbSpec {
+		const dx = leg.to.x - leg.from.x;
+		const dy = leg.to.y - leg.from.y;
+		const [c, s] = [Math.cos(angle), Math.sin(angle)];
+		return { ...leg, to: { x: leg.from.x + dx * c - dy * s, y: leg.from.y + dx * s + dy * c } };
+	}
+	// A trotting gait: legs on opposite corners move together.
+	const stride = (i: number, phase: number) =>
+		running ? 0.5 * Math.sin(t * 16 + i * Math.PI + phase) : 0;
+	const backLegs = $derived(layout.backLegs.map((l, i) => swingLeg(l, stride(i, Math.PI))));
+	const frontLegs = $derived(layout.frontLegs.map((l, i) => swingLeg(l, stride(i, 0))));
+	const bob = $derived(running ? -6 * Math.abs(Math.sin(t * 16)) : 0);
+	/**
+	 * Move / flip / scale the whole cat around the middle of its feet. `squash` < 1 squashes it
+	 * (landing, crouching), > 1 stretches it (taking off).
+	 */
+	const placement = $derived.by(() => {
+		const k = offset.scale ?? 1;
+		const sq = offset.squash ?? 1;
+		const sx = (offset.flip ? -1 : 1) * k * (2 - sq);
+		const px = layout.shadow.cx;
+		return `translate(${px + offset.x} ${ground - offset.y}) scale(${sx} ${k * sq}) translate(${-px} ${-ground})`;
+	});
+	const pawOf = (l: LimbSpec) => ({
+		x: l.to.x,
+		y: l.to.y,
+		dx: l.to.x - l.from.x,
+		dy: l.to.y - l.from.y
+	});
 	const costume = $derived(costumeOf(cat.accessories));
 	const showScenery = $derived(scenery && cat.background !== 'none');
 
@@ -194,26 +231,23 @@
 		opacity="0.12"
 	/>
 
-	<g
-		transform="translate({layout.shadow.cx + offset.x} {ground - offset.y}) scale({(offset.flip
-			? -1
-			: 1) * (offset.scale ?? 1)} {offset.scale ?? 1}) translate({-layout.shadow.cx} {-ground})"
-	>
-		<g transform="translate(0 {ground}) scale(1 {anim.breath}) translate(0 {-ground})">
+	<g transform={placement}>
+		<g transform="translate(0 {ground + bob}) scale(1 {anim.breath}) translate(0 {-ground})">
 			<!-- Costumes are smooth metal, so they skip the fluffy filter. -->
 			<g filter={costume ? undefined : fluffy}>
 				<Limb
-					d={tailPath(layout.tail, anim.tailSwing)}
+					d={tailPath(layout.tail, anim.tailSwing, tipSwing)}
 					width={layout.tail.width}
 					fill={cat.color}
 					layers={tailLayers}
 				/>
-				{#each layout.backLegs as leg, i (i)}
+				{#each backLegs as leg, i (i)}
 					<Limb
 						d={limbPath(leg)}
 						width={leg.width}
 						fill={shade(cat.color, -0.08)}
 						layers={legLayers}
+						paw={pawOf(leg)}
 					/>
 				{/each}
 				{#each [layout.body, ...layout.haunches] as blob, i (i)}
@@ -230,8 +264,14 @@
 						{/if}
 					</Part>
 				{/each}
-				{#each layout.frontLegs as leg, i (i)}
-					<Limb d={limbPath(leg)} width={leg.width} fill={cat.color} layers={legLayers} />
+				{#each frontLegs as leg, i (i)}
+					<Limb
+						d={limbPath(leg)}
+						width={leg.width}
+						fill={cat.color}
+						layers={legLayers}
+						paw={pawOf(leg)}
+					/>
 				{/each}
 			</g>
 

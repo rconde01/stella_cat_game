@@ -85,6 +85,14 @@ changes the rest:
   Legs and tail are thick rounded strokes with an outline stroke underneath (`parts/Limb.svelte`).
 - **Patterns** (`patterns.ts`): markings for blob parts are shapes clipped to the part; legs and tail
   use dash patterns (`pathLength=100`) — stripes = bands, spots = round dots, tuxedo = white socks/tip.
+- **Anime detail** (added at Stella's request): cel shading in `Part` (a soft shadow band along the
+  bottom of each blob + a glossy highlight), fluffy cheek tufts, a hair tuft on top of the head, fur
+  wisps in the ears, layered eyes (lid shadow, iris ring, bottom reflection, oval + dot highlights, a
+  twinkle, extra lashes and a lower lash), a nose shine, and toe lines on paws (`Limb`'s `paw` prop).
+- **Motion detail**: the tail tip follows a quarter-second behind the rest of the tail (follow-through,
+  `tailPath(..., tipSwing)`); `running` makes the legs trot (diagonal pairs) and the body bob;
+  `offset.squash` squashes/stretches the cat (crouch before jumps, stretch on take-off, squash + dust
+  puffs on landing) — used by the laser chase and battles, which also add speed lines when dashing.
 - **Fluffy** uses an SVG turbulence + displacement filter to roughen the fur outline (skipped when a
   metal costume is worn).
 - **Accessories** (`accessories/`): head and eye items are drawn in head units on top of the face
@@ -434,6 +442,12 @@ account". New columns (`care`, `progress`) are added to the live database automa
    flying kicks, sneaky pounces, and thrown cucumbers, catnip, fish bones and hairballs. Hearts, comic
    hit bursts, dodges, screen shake, new `hurt` and `dizzy` faces, and a skip button.
 2. Laser: the cat jumps straight up when the dot is over its head.
+
+### 2026-10-07 — More detail (Stella's request)
+
+1. Drawing: cel shading and gloss, cheek and head tufts, ear fur, richer eyes, nose shine, toe lines.
+2. Animation: tail follow-through, trotting legs and body bob when running, squash and stretch on
+   jumps, dust puffs on landing, speed lines on dashes (laser chase and battles).
 
 ## Ideas backlog
 

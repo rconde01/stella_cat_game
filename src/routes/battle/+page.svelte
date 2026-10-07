@@ -38,10 +38,13 @@
 		pose: Pose;
 		action: CatAction;
 		hearts: number;
+		running: boolean;
+		/** < 1 squashed, > 1 stretched. */
+		squash: number;
 	}
 	interface Effect {
 		id: number;
-		kind: 'burst' | 'slash' | 'cloud' | 'shout';
+		kind: 'burst' | 'slash' | 'cloud' | 'shout' | 'dust' | 'speed';
 		x: number;
 		y: number;
 		text: string;
@@ -79,7 +82,7 @@
 	const t = $derived(clock.t);
 
 	function fresh(): Fighter {
-		return { x: 0, y: 0, pose: 'standing', action: null, hearts: 3 };
+		return { x: 0, y: 0, pose: 'standing', action: null, hearts: 3, running: false, squash: 1 };
 	}
 
 	onMount(async () => {
@@ -142,6 +145,42 @@
 		if (fighters[s].action === action) fighters[s].action = null;
 	}
 
+	/** Where a cat's feet are in the arena right now. */
+	function feetAt(s: Side): { x: number; y: number } {
+		const f = fighters[s];
+		const pivot = layoutCat({ shape: catOf(s).shape, pose: f.pose }).shadow.cx;
+		return { x: BOX_X[s] + (pivot + f.x) * 0.75, y: 345 };
+	}
+
+	/**
+	 * A jump with some bounce: crouch to wind up, stretch on the way up, squash and kick up dust on
+	 * landing. `during(p)` can move the cat sideways while it's in the air.
+	 */
+	async function jump(s: Side, height: number, ms: number, during?: (p: number) => void) {
+		const f = fighters[s];
+		await tween(110, (p) => (f.squash = 1 - 0.2 * p));
+		sfx.boing();
+		await tween(ms, (p) => {
+			f.y = height * Math.sin(Math.PI * p);
+			f.squash = p < 0.5 ? 1.12 : 1;
+			during?.(p);
+		});
+		f.y = 0;
+		const feet = feetAt(s);
+		effect('dust', feet.x, feet.y);
+		await tween(160, (p) => (f.squash = 0.78 + 0.22 * p));
+	}
+
+	/** Run sideways to `to` (box units), legs trotting and speed lines streaming behind. */
+	async function run(s: Side, to: number, ms: number) {
+		const f = fighters[s];
+		const from = f.x;
+		f.running = true;
+		const feet = feetAt(s);
+		effect('speed', feet.x, feet.y - 60, to > from ? 'right' : 'left');
+		await tween(ms, (p) => (f.x = from + (to - from) * easeOut(p)));
+		f.running = false;
+	}
 	// ----- moves -----
 
 	async function hit(target: Side, move: Move) {
@@ -164,9 +203,13 @@
 		}
 		if (move === 'cucumber') {
 			sfx.eek();
-			await tween(700, (p) => (fighters[target].y = 170 * Math.sin(Math.PI * p)));
+			await jump(target, 180, 650);
 		} else {
-			await tween(350, (p) => (fighters[target].x = away * 60 * Math.sin(Math.PI * p)));
+			const f = fighters[target];
+			await tween(350, (p) => {
+				f.x = away * 60 * Math.sin(Math.PI * p);
+				f.squash = 1 - 0.18 * Math.sin(Math.PI * p);
+			});
 		}
 	}
 
@@ -174,7 +217,7 @@
 		const h = headAt(target);
 		sfx.boing();
 		effect('shout', h.x, h.y - 70, 'MISSED!');
-		await tween(600, (p) => (fighters[target].y = 150 * Math.sin(Math.PI * p)));
+		await jump(target, 150, 520);
 	}
 
 	async function melee(attacker: Side, move: Move, lands: boolean) {
@@ -190,27 +233,32 @@
 		);
 
 		if (move === 'sneaky-pounce') {
+			// Creep up low, bottom wiggling...
 			A.pose = 'stretching';
-			await tween(900, (p) => (A.x = dir * 110 * p));
+			A.running = true;
+			await tween(900, (p) => {
+				A.x = dir * 110 * p;
+				A.squash = 0.9 + 0.05 * Math.sin(p * 30);
+			});
+			A.running = false;
+			A.squash = 1;
 		}
 		sfx.whoosh();
 		const from = A.x;
 		const dodging = lands ? null : wait(150).then(() => dodge(target));
 		if (move === 'karate-chop') {
-			await tween(400, (p) => (A.x = from + dir * (REACH - from * dir) * easeOut(p)));
+			await run(attacker, dir * REACH, 400);
 			const h = headAt(target);
 			effect('slash', h.x - dir * 30, h.y - 10);
 		} else {
 			if (move === 'sneaky-pounce') A.pose = 'standing';
-			sfx.boing();
-			await tween(500, (p) => {
+			await jump(attacker, move === 'kick' ? 130 : 170, 480, (p) => {
 				A.x = from + dir * (REACH - from * dir) * p;
-				A.y = (move === 'kick' ? 130 : 170) * Math.sin(Math.PI * p);
 			});
 		}
 		if (lands) await hit(target, move);
 		await dodging;
-		await tween(350, (p) => (A.x = dir * REACH * (1 - p)));
+		await run(attacker, 0, 450);
 		A.pose = 'standing';
 	}
 
@@ -225,7 +273,9 @@
 		} else {
 			effect('shout', head.x, head.y - 60, MOVES[move].icon);
 			void setAction(attacker, 'celebrating', 500);
-			await wait(300);
+			// Wind up the throw: lean back, then fling.
+			const A = fighters[attacker];
+			await tween(300, (p) => (A.squash = 1 - 0.15 * Math.sin(Math.PI * p)));
 		}
 		sfx.whoosh();
 		const start = headAt(attacker);
@@ -359,7 +409,8 @@
 			scenery={false}
 			action={f.action}
 			medal={winnerSide === side}
-			offset={{ x: f.x, y: f.y, flip: side === 'left' }}
+			offset={{ x: f.x, y: f.y, flip: side === 'left', squash: f.squash }}
+			running={f.running}
 		/>
 	</div>
 {/snippet}
@@ -476,6 +527,29 @@
 										stroke="white"
 										stroke-width="7"
 										stroke-linecap="round"
+									/>
+								{/each}
+							{:else if e.kind === 'dust'}
+								{#each [-1, 0, 1] as k (k)}
+									<circle
+										cx={k * (10 + age * 60)}
+										cy={-age * 14 - (k === 0 ? 8 : 0)}
+										r={8 + age * 16}
+										fill="#e9e1d6"
+										stroke="#cbbfae"
+										stroke-width="1.5"
+										opacity={Math.max(0, 1 - age / 0.6)}
+									/>
+								{/each}
+							{:else if e.kind === 'speed'}
+								{@const back = e.text === 'right' ? -1 : 1}
+								{#each [-28, -6, 16] as dy, i (i)}
+									<path
+										d="M {back * (40 + i * 10)} {dy} l {back * (70 - i * 12)} 0"
+										stroke="white"
+										stroke-width="5"
+										stroke-linecap="round"
+										opacity={Math.max(0, 0.9 - age * 1.8)}
 									/>
 								{/each}
 							{:else if e.kind === 'cloud'}

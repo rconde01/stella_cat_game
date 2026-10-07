@@ -114,18 +114,18 @@ export function limbPath(l: Limb): string {
 	return `M ${l.from.x} ${l.from.y} Q ${cx} ${cy} ${l.to.x} ${l.to.y}`;
 }
 
-/** Tail path with the tail swung by `swing` radians (the tip moves the most). */
-export function tailPath(t: Tail, swing: number): string {
-	const rot = (p: Pt, k: number): Pt => {
-		const a = swing * k;
-		return {
-			x: t.base.x + p.x * Math.cos(a) - p.y * Math.sin(a),
-			y: t.base.y + p.x * Math.sin(a) + p.y * Math.cos(a)
-		};
-	};
-	const c1 = rot(t.c1, 0.3);
-	const c2 = rot(t.c2, 0.7);
-	const end = rot(t.end, 1);
+/**
+ * Tail path with the tail swung by `swing` radians (the tip moves the most). Passing a slightly older
+ * swing as `tipSwing` makes the tip lag behind and whip through (follow-through).
+ */
+export function tailPath(t: Tail, swing: number, tipSwing = swing): string {
+	const rot = (p: Pt, a: number): Pt => ({
+		x: t.base.x + p.x * Math.cos(a) - p.y * Math.sin(a),
+		y: t.base.y + p.x * Math.sin(a) + p.y * Math.cos(a)
+	});
+	const c1 = rot(t.c1, swing * 0.3);
+	const c2 = rot(t.c2, swing * 0.5 + tipSwing * 0.2);
+	const end = rot(t.end, swing * 0.3 + tipSwing * 0.7);
 	return `M ${t.base.x} ${t.base.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${end.x} ${end.y}`;
 }
 

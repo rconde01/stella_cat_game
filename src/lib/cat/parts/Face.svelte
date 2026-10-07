@@ -152,6 +152,7 @@
 		stroke-width="2"
 		{...ln}
 	/>
+	<ellipse cx="-0.022" cy="0.322" rx="0.02" ry="0.012" fill="white" stroke="none" opacity="0.85" />
 
 	<!-- mouth -->
 	<g stroke-width="3">

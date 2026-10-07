@@ -33,7 +33,7 @@
 	type Tool = 'pet' | 'play' | 'laser' | 'brush';
 	interface Particle {
 		id: number;
-		kind: 'heart' | 'sparkle' | 'tuft';
+		kind: 'heart' | 'sparkle' | 'tuft' | 'dust';
 		x: number;
 		y: number;
 		born: number;
@@ -337,7 +337,10 @@
 		nextPounce: 0,
 		pounce: false,
 		/** Take-off speed for the next jump. */
-		leap: 0
+		leap: 0,
+		squash: 1,
+		landUntil: 0,
+		running: false
 	});
 	let chase = $state(atRest());
 
@@ -364,14 +367,23 @@
 		c.scale += (wantScale - c.scale) * Math.min(1, dt * 6);
 		const dx = target - c.x;
 
+		c.running = false;
 		if (c.y > 0 || c.vy > 0) {
-			// In the air: fly toward the dot, then land.
+			// In the air: fly toward the dot, then land with a squash and a puff of dust.
 			c.vy -= 1400 * dt;
 			c.y = Math.max(0, c.y + c.vy * dt);
 			c.x += Math.sign(dx) * Math.min(Math.abs(dx), 320 * dt);
-			if (c.y === 0) c.vy = 0;
+			c.squash = c.vy > 0 ? 1.12 : 1;
+			if (c.y === 0) {
+				c.vy = 0;
+				c.landUntil = t + 0.15;
+				const feet = pivot + c.x;
+				spawn('dust', feet - 35, 352);
+				spawn('dust', feet + 35, 352);
+			}
 			return;
 		}
+		c.squash = t < c.crouchUntil ? 0.82 : t < c.landUntil ? 0.8 : 1;
 		if (t < c.crouchUntil) return; // wiggling, about to pounce
 		if (c.pounce) {
 			c.pounce = false;
@@ -401,6 +413,7 @@
 		// Run toward the dot (or stroll back home when it's gone).
 		const step = Math.sign(dx) * Math.min(Math.abs(dx), (pointer ? 240 : 90) * dt);
 		c.x += step;
+		c.running = Math.abs(step) > 0.5;
 		// The side-on poses face left, so flip to run right.
 		if (Math.abs(dx) > 4) c.flip = dx > 0;
 		if (pointer && care.fun < 100) setCare(addTo(care, 'play', Math.abs(step) * 0.03));
@@ -458,6 +471,7 @@
 						{lookAt}
 						expression={hissExpression}
 						offset={chase}
+						running={chase.running}
 					/>
 					<svg class="overlay" viewBox="0 0 400 400" aria-hidden="true">
 						{#if t < feedingUntil}
@@ -506,7 +520,21 @@
 
 						{#each particles as p (p.id)}
 							{@const age = t - p.born}
-							{#if age < 1.5}
+							{#if p.kind === 'dust'}
+								{#if age < 0.6}
+									{#each [-1, 0, 1] as k (k)}
+										<circle
+											cx={p.x + k * (8 + age * 50)}
+											cy={p.y - age * 12 - (k === 0 ? 6 : 0)}
+											r={6 + age * 14}
+											fill="#e9e1d6"
+											stroke="#cbbfae"
+											stroke-width="1.5"
+											opacity={1 - age / 0.6}
+										/>
+									{/each}
+								{/if}
+							{:else if age < 1.5}
 								<text
 									x={p.x + (p.kind === 'tuft' ? age * 30 : 0)}
 									y={p.y - age * 40}

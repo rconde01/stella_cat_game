@@ -82,10 +82,51 @@
 					stroke-width="2.5"
 					vector-effect="non-scaling-stroke"
 				/>
+				<!-- shadow under the upper lid (clipped to the iris), and a darker ring around the iris -->
+				<clipPath id="{clipId}-iris"><ellipse rx="0.23" ry="0.28" /></clipPath>
+				<path
+					d="M -0.25 -0.08 Q 0 -0.2 0.25 -0.08 L 0.25 -0.3 L -0.25 -0.3 Z"
+					fill={PUPIL}
+					opacity="0.3"
+					stroke="none"
+					clip-path="url(#{clipId}-iris)"
+				/>
+				<ellipse
+					cx={lx * 0.6}
+					cy={0.03 + lookY * 0.6}
+					rx="0.165"
+					ry="0.215"
+					fill="none"
+					stroke={PUPIL}
+					stroke-width="1.5"
+					opacity="0.35"
+					vector-effect="non-scaling-stroke"
+				/>
 				<ellipse cx={lx} cy={0.03 + lookY} rx="0.1" ry="0.17" fill={PUPIL} stroke="none" />
-				<circle cx={-0.08 + lx * 0.5} cy={-0.11 + lookY} r="0.085" fill="white" stroke="none" />
+				<!-- glossy reflection along the bottom -->
+				<path
+					d="M -0.17 0.12 Q 0 0.29 0.17 0.12 Q 0 0.21 -0.17 0.12 Z"
+					fill="white"
+					opacity="0.4"
+					stroke="none"
+				/>
+				<!-- highlights: a big oval, a small dot and a twinkle -->
+				<ellipse
+					cx={-0.08 + lx * 0.5}
+					cy={-0.1 + lookY}
+					rx="0.085"
+					ry="0.11"
+					fill="white"
+					stroke="none"
+					transform="rotate(-25 {-0.08 + lx * 0.5} {-0.1 + lookY})"
+				/>
 				<circle cx={0.09 + lx * 0.5} cy={0.12 + lookY} r="0.04" fill="white" stroke="none" />
-				<circle cx={-0.12} cy={0.08} r="0.022" fill="white" stroke="none" opacity="0.8" />
+				<path
+					d="M 0.08 -0.16 l 0.015 0.035 l 0.035 0.015 l -0.035 0.015 l -0.015 0.035 l -0.015 -0.035 l -0.035 -0.015 l 0.035 -0.015 Z"
+					fill="white"
+					stroke="none"
+					opacity="0.9"
+				/>
 			</g>
 			{#if lid === 'angry'}
 				<path d="M -0.3 0.03 L 0.33 -0.2" stroke-width="5.5" vector-effect="non-scaling-stroke" />
@@ -95,7 +136,15 @@
 					stroke-width="5.5"
 					vector-effect="non-scaling-stroke"
 				/>
+				<!-- eyelashes flicking out at the corner, and a little lower lash -->
 				<path d="M 0.26 -0.13 L 0.37 -0.2" stroke-width="4" vector-effect="non-scaling-stroke" />
+				<path d="M 0.2 -0.24 L 0.27 -0.33" stroke-width="3" vector-effect="non-scaling-stroke" />
+				<path d="M 0.28 -0.05 L 0.38 -0.07" stroke-width="3" vector-effect="non-scaling-stroke" />
+				<path
+					d="M 0.12 0.26 Q 0.21 0.22 0.25 0.12"
+					stroke-width="2"
+					vector-effect="non-scaling-stroke"
+				/>
 			{/if}
 		</g>
 	{/if}

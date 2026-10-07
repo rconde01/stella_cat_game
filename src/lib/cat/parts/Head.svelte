@@ -89,7 +89,32 @@
 						fill={INNER_EAR}
 						transform="translate({mid.x} {mid.y + 0.06}) scale(0.55) translate({-mid.x} {-mid.y})"
 					/>
+					<!-- fluffy fur inside the ear -->
+					<g stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.9">
+						<path
+							d="M {mid.x - 0.1} {mid.y + 0.04} Q {mid.x - 0.04} {mid.y - 0.14} {mid.x +
+								0.02} {mid.y - 0.3}"
+							vector-effect="non-scaling-stroke"
+						/>
+						<path
+							d="M {mid.x + 0.04} {mid.y + 0.06} Q {mid.x + 0.08} {mid.y - 0.08} {mid.x +
+								0.14} {mid.y - 0.18}"
+							vector-effect="non-scaling-stroke"
+						/>
+					</g>
 				</g>
+			{/each}
+			<!-- fluffy cheek tufts, poking out from behind the head -->
+			{#each [1, -1] as side (side)}
+				<path
+					transform="scale({side} 1)"
+					d="M 1.0 0.16 L 1.25 0.26 L 1.07 0.34 L 1.23 0.45 L 1.0 0.52 Z"
+					fill={coatFill}
+					stroke={OUTLINE}
+					stroke-width="3.5"
+					stroke-linejoin="round"
+					vector-effect="non-scaling-stroke"
+				/>
 			{/each}
 			<Part
 				id="{uid}-head"
@@ -98,6 +123,16 @@
 				fill={coatFill}
 				markings={patternPath(pattern, 'head')}
 				{markingFill}
+				shading={0.1}
+			/>
+			<!-- a little tuft of hair on top -->
+			<path
+				d="M -0.15 -0.89 Q -0.09 -1.14 0 -0.9 Q 0.06 -1.08 0.14 -0.88"
+				fill={coatFill}
+				stroke={OUTLINE}
+				stroke-width="3.5"
+				stroke-linejoin="round"
+				vector-effect="non-scaling-stroke"
 			/>
 		</g>
 	</g>
